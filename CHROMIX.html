@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chromix — Color Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+// Suppress Babel in-browser transformer warning (intercept all console methods)
+['log','warn','error','info'].forEach(m=>{const o=console[m];console[m]=function(...a){if(typeof a[0]==='string'&&(a[0].includes('Babel')||a[0].includes('babel-standalone')||a[0].includes('precompile')||a[0].includes('in-browser')))return;o.apply(console,a)};});
+// Set saved or default (purple) theme immediately before React loads to avoid flash
+(function(){const t=localStorage.getItem('chromix-theme')||'default';document.documentElement.setAttribute('data-theme',t)})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+/* ── RESET & BASE ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg0);color:var(--t0);font-family:'Syne',system-ui,sans-serif;transition:background .25s,color .25s;overflow-x:hidden}
+
+/* ══ C2 THEME SYSTEM — 3 themes ══ */
+/* DEFAULT: Deep space purple */
+:root,[data-theme="default"]{
+  --bg0:#07080f;--bg1:#0d0e1c;--bg2:#111224;--bg3:#181930;
+  --border:rgba(124,111,255,.18);--border2:rgba(124,111,255,.32);
+  --t0:#eeeef8;--t1:#9999cc;--t2:#4a4a72;
+  --acc:#7c6fff;--acc2:#3ecfef;--ok:#3dffa0;--warn:#ffcc44;--err:#ff5533;
+  --acc-glow:rgba(124,111,255,.5);
+  --header-bg:rgba(4,4,18,.88);
+  --r:10px;--r2:14px;--trans:.18s cubic-bezier(.4,0,.2,1);
+}
+/* DARK: Absolute black — high contrast, clean */
+[data-theme="dark"]{
+  --bg0:#000000;--bg1:#0a0a0a;--bg2:#111111;--bg3:#181818;
+  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
+  --t0:#ffffff;--t1:#b0b0c8;--t2:#666680;
+  --acc:#7c6fff;--acc2:#3ecfef;--ok:#3dffa0;--warn:#ffcc44;--err:#ff5533;
+  --acc-glow:rgba(124,111,255,.45);
+  --header-bg:rgba(0,0,0,.96);
+  --r:10px;--r2:14px;--trans:.18s cubic-bezier(.4,0,.2,1);
+}
+/* LIGHT: Clean white with rich contrast */
+[data-theme="light"]{
+  --bg0:#ffffff;--bg1:#f0f0f5;--bg2:#f4f4f8;--bg3:#e8e8f0;
+  --border:#d0d0e0;--border2:#b0b0cc;
+  --t0:#0a0a1a;--t1:#444488;--t2:#8888aa;
+  --acc:#4455ee;--acc2:#0099bb;--ok:#009944;--warn:#bb7700;--err:#cc2200;
+  --acc-glow:rgba(68,85,238,.25);
+  --header-bg:rgba(255,255,255,.97);
+  --r:10px;--r2:14px;--trans:.18s cubic-bezier(.4,0,.2,1);
+}
+
+button{font-family:var(--font,inherit);cursor:pointer;border:none;outline:none}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+a{color:var(--acc)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+canvas{display:block;touch-action:none;max-width:100%}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--t0);border:2px solid var(--acc);cursor:pointer}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px var(--acc)}50%{box-shadow:0 0 20px var(--acc),0 0 40px var(--acc)44}}
+@keyframes starPop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+@keyframes lcPop{from{transform:scale(.78);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes btnPulseGlow{0%,100%{box-shadow:0 4px 18px var(--acc-glow),0 0 0 0 var(--acc-glow)}50%{box-shadow:0 6px 28px var(--acc-glow),0 0 14px 2px var(--acc-glow)}}
+nav::-webkit-scrollbar{display:none}
+nav{scrollbar-width:none;-ms-overflow-style:none}
+@media(max-width:500px){.tab-label{display:none!important}}
+/* Ambient background canvas — exact C2 */
+#chromix-bg{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.6;transition:opacity .3s}
+[data-theme="light"] #chromix-bg{opacity:.12}
+[data-theme="dark"] #chromix-bg{opacity:.04}
+#root{position:relative;z-index:1}
+</style>
+</head>
+<body>
+<canvas id="chromix-bg"></canvas>
+<div id="root"></div>
+<script>
+// Ambient background — ported verbatim from C2
+(function(){
+  const canvas = document.getElementById('chromix-bg');
+  const ctx = canvas.getContext('2d');
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  let time = 0;
+  function animate() {
+    time += 0.001;
+    ctx.fillStyle = 'rgba(124, 111, 255, 0.03)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < 3; i++) {
+      const x = (Math.sin(time + i) * canvas.width  * 0.3) + canvas.width  * 0.5;
+      const y = (Math.cos(time * 0.7 + i * 2) * canvas.height * 0.3) + canvas.height * 0.5;
+      const r = 200 + Math.sin(time + i) * 100;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, 'rgba(124, 111, 255, 0.08)');
+      grad.addColorStop(1, 'rgba(124, 111, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+</script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext, useReducer } = React;
+
+// ═══════════════════════════════════════════════════════════════════
+//  PURE COLOR MATH ENGINE (from ChromaLab v4 — untouched)
+// ═══════════════════════════════════════════════════════════════════
+const TAU = Math.PI * 2, DEG = Math.PI / 180;
+
+function hslToRgb(h, s, l) {
+  s/=100; l/=100;
+  const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs(((h/60)%2)-1)), m=l-c/2;
+  let r=0,g=0,b=0;
+  if(h<60){r=c;g=x} else if(h<120){r=x;g=c} else if(h<180){g=c;b=x}
+  else if(h<240){g=x;b=c} else if(h<300){r=x;b=c} else{r=c;b=x}
+  return {r:Math.round((r+m)*255),g:Math.round((g+m)*255),b:Math.round((b+m)*255)};
+}
+function hsvToRgb(h,s,v){
+  const c=v*s,x=c*(1-Math.abs(((h/60)%2)-1)),m=v-c;
+  let r=0,g=0,b=0;
+  if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}
+  else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}
+  return {r:Math.round((r+m)*255),g:Math.round((g+m)*255),b:Math.round((b+m)*255)};
+}
+function rgbToHex({r,g,b}){return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase()}
+function hslToHex(h,s,l){return rgbToHex(hslToRgb(h,s,l))}
+function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return{r,g,b}}
+function hslToHsv(h,s,l){s/=100;l/=100;const v=l+s*Math.min(l,1-l);const sv=v<1e-10?0:2*(1-l/v);return{h,sv,v}}
+function hsvToHsl(h,sv,v){const l=v*(1-sv/2);const sl=(l<1e-10||l>1-1e-10)?0:(v-l)/Math.min(l,1-l);return{h,s:Math.max(0,Math.min(100,sl*100)),l:Math.max(0,Math.min(100,l*100))}}
+function linearizeChannel(v){v/=255;return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4)}
+function rgbToLab({r,g,b}){
+  const rl=linearizeChannel(r),gl=linearizeChannel(g),bl=linearizeChannel(b);
+  const X=(rl*0.4124564+gl*0.3575761+bl*0.1804375)/0.95047;
+  const Y=rl*0.2126729+gl*0.7151522+bl*0.0721750;
+  const Z=(rl*0.0193339+gl*0.1191920+bl*0.9503041)/1.08883;
+  const f=t=>t>0.008856?Math.cbrt(t):7.787*t+16/116;
+  return{L:116*f(Y)-16,a:500*(f(X)-f(Y)),b:200*(f(Y)-f(Z))};
+}
+function deltaE2000(lab1,lab2){
+  const{L:L1,a:a1,b:b1}=lab1,{L:L2,a:a2,b:b2}=lab2;
+  const avgC=(Math.sqrt(a1**2+b1**2)+Math.sqrt(a2**2+b2**2))/2;
+  const G=0.5*(1-Math.sqrt(avgC**7/(avgC**7+25**7)));
+  const a1p=a1*(1+G),a2p=a2*(1+G);
+  const C1p=Math.sqrt(a1p**2+b1**2),C2p=Math.sqrt(a2p**2+b2**2);
+  let h1p=Math.atan2(b1,a1p)/DEG;if(h1p<0)h1p+=360;
+  let h2p=Math.atan2(b2,a2p)/DEG;if(h2p<0)h2p+=360;
+  const dLp=L2-L1,dCp=C2p-C1p;
+  const dhp=Math.abs(h2p-h1p)<=180?h2p-h1p:h2p<=h1p?h2p-h1p+360:h2p-h1p-360;
+  const dHp=2*Math.sqrt(C1p*C2p)*Math.sin(dhp*DEG/2);
+  const avgLp=(L1+L2)/2,avgCp=(C1p+C2p)/2;
+  const avghp=Math.abs(h1p-h2p)<=180?(h1p+h2p)/2:(h1p+h2p+(h1p+h2p<360?360:-360))/2;
+  const T=1-0.17*Math.cos((avghp-30)*DEG)+0.24*Math.cos(2*avghp*DEG)+0.32*Math.cos((3*avghp+6)*DEG)-0.20*Math.cos((4*avghp-63)*DEG);
+  const SL=1+0.015*(avgLp-50)**2/Math.sqrt(20+(avgLp-50)**2);
+  const SC=1+0.045*avgCp,SH=1+0.015*avgCp*T;
+  const RC=2*Math.sqrt(avgCp**7/(avgCp**7+25**7));
+  const RT=-Math.sin(2*((avghp-275)/25)**2*DEG*180/Math.PI)*RC;
+  return Math.sqrt((dLp/SL)**2+(dCp/SC)**2+(dHp/SH)**2+RT*(dCp/SC)*(dHp/SH));
+}
+function deltaEComponents(lab1,lab2){
+  const dL=lab2.L-lab1.L;
+  const C1=Math.sqrt(lab1.a**2+lab1.b**2),C2=Math.sqrt(lab2.a**2+lab2.b**2);
+  const dC=C2-C1,da=lab2.a-lab1.a,db=lab2.b-lab1.b;
+  const dH=Math.sqrt(Math.max(0,da**2+db**2-dC**2));
+  return{dL:Math.abs(dL),dC:Math.abs(dC),dH};
+}
+function scoreFromDeltaE(dE,strictness='standard'){
+  const caps={relaxed:35,standard:25,strict:18,wcag:15};
+  const cap=caps[strictness]??25;
+  if(dE<=1)return 100;
+  if(dE>=cap)return 0;
+  return Math.round(100*Math.pow(1-dE/cap,1.6));
+}
+function scoreLabel(score){
+  if(score>=97)return{text:'PERFECT',   color:'#3dffa0',glow:'#3dffa055'};
+  if(score>=88)return{text:'EXCELLENT', color:'#44ff88',glow:'#44ff8855'};
+  if(score>=74)return{text:'GOOD',      color:'#aaee44',glow:'#aaee4455'};
+  if(score>=55)return{text:'FAIR',      color:'#ffcc44',glow:'#ffcc4455'};
+  return             {text:'TRY AGAIN', color:'#ff5533',glow:'#ff553355'};
+}
+function contrastRatio(rgb1,rgb2){
+  const L=({r,g,b})=>{const l=v=>{v/=255;return v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4};return 0.2126*l(r)+0.7152*l(g)+0.0722*l(b)};
+  const l1=L(rgb1),l2=L(rgb2);
+  return(Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+}
+function wcagLevel(ratio){
+  if(ratio>=7)  return{level:'AAA',    pass:true, color:'#3dffa0'};
+  if(ratio>=4.5)return{level:'AA',     pass:true, color:'#44ff88'};
+  if(ratio>=3)  return{level:'AA Lg',  pass:true, color:'#ffcc44'};
+  return              {level:'Fail',   pass:false,color:'#ff5533'};
+}
+function randomTarget(difficulty){
+  const B={novice:{sMin:65,sMax:90,lMin:42,lMax:62},medium:{sMin:45,sMax:90,lMin:32,lMax:72},hard:{sMin:25,sMax:95,lMin:22,lMax:78},master:{sMin:8,sMax:100,lMin:12,lMax:88}};
+  const b=B[difficulty]??B.medium;
+  return{h:Math.random()*360,s:b.sMin+Math.random()*(b.sMax-b.sMin),l:b.lMin+Math.random()*(b.lMax-b.lMin)};
+}
+
+// ─── C1 HARMONY MATH ───
+const HarmonyMath = {
+  norm(h){return((h%360)+360)%360},
+  angDiff(a,b){const d=Math.abs(this.norm(a)-this.norm(b));return d>180?360-d:d},
+  hueScore(guess,target,tol=30){return Math.max(0,Math.round(100-this.angDiff(guess,target)*100/tol))},
+  satScore(guess,target,tol=40){return Math.max(0,Math.round(100-Math.abs(guess-target)*100/tol))},
+  avg(scores){if(!scores.length)return 0;return Math.round(scores.reduce((a,b)=>a+b,0)/scores.length)},
+};
+
+// ─── GEOMETRY HELPERS (for HSL wheel) ───
+function triVertices(cx,cy,r,hDeg){
+  const base=(hDeg-90)*DEG;
+  return[{x:cx+r*Math.cos(base),y:cy+r*Math.sin(base)},{x:cx+r*Math.cos(base-TAU/3),y:cy+r*Math.sin(base-TAU/3)},{x:cx+r*Math.cos(base+TAU/3),y:cy+r*Math.sin(base+TAU/3)}];
+}
+function bary(px,py,v0,v1,v2){
+  const denom=(v1.y-v2.y)*(v0.x-v2.x)+(v2.x-v1.x)*(v0.y-v2.y);
+  if(Math.abs(denom)<1e-10)return{w0:1/3,w1:1/3,w2:1/3,inside:false};
+  const w0=((v1.y-v2.y)*(px-v2.x)+(v2.x-v1.x)*(py-v2.y))/denom;
+  const w1=((v2.y-v0.y)*(px-v2.x)+(v0.x-v2.x)*(py-v2.y))/denom;
+  const w2=1-w0-w1;
+  return{w0,w1,w2,inside:w0>=0&&w1>=0&&w2>=0};
+}
+function clampToTri(px,py,verts){
+  const[v0,v1,v2]=verts;
+  const{w0,w1,w2,inside}=bary(px,py,v0,v1,v2);
+  if(inside)return{x:px,y:py};
+  const cw0=Math.max(0,w0),cw1=Math.max(0,w1),cw2=Math.max(0,w2);
+  const s=cw0+cw1+cw2;
+  if(s<1e-10)return{x:(v0.x+v1.x+v2.x)/3,y:(v0.y+v1.y+v2.y)/3};
+  return{x:(cw0*v0.x+cw1*v1.x+cw2*v2.x)/s,y:(cw0*v0.y+cw1*v1.y+cw2*v2.y)/s};
+}
+function hslToTriPos(hsl,cx,cy,triR){
+  const{sv,v}=hslToHsv(hsl.h,hsl.s,hsl.l);
+  const verts=triVertices(cx,cy,triR,hsl.h);
+  const w0=sv*v,w1=(1-sv)*v,w2=1-v;
+  return{x:w0*verts[0].x+w1*verts[1].x+w2*verts[2].x,y:w0*verts[0].y+w1*verts[1].y+w2*verts[2].y};
+}
+function triPosToHsl(px,py,hDeg,cx,cy,triR){
+  const verts=triVertices(cx,cy,triR,hDeg);
+  const clamped=clampToTri(px,py,verts);
+  const{w0,w1}=bary(clamped.x,clamped.y,verts[0],verts[1],verts[2]);
+  const cw0=Math.max(0,w0),cw1=Math.max(0,w1);
+  const v=cw0+cw1;
+  const sv=v<1e-10?0:cw0/v;
+  return hsvToHsl(hDeg,sv,Math.min(1,Math.max(0,v)));
+}
+function hitRing(x,y,cx,cy,innerR,outerR){
+  const d2=(x-cx)**2+(y-cy)**2;
+  return d2>=innerR*innerR&&d2<=outerR*outerR;
+}
+function angleToHue(x,y,cx,cy){return(((Math.atan2(y-cy,x-cx)/DEG)+90)%360+360)%360}
+
+// ─── EXPORT UTILITIES ───
+function exportPalette(colors,format){
+  const labeled=colors.map((c,i)=>({index:i+1,hsl:{h:Math.round(c.h),s:Math.round(c.s),l:Math.round(c.l)},hex:hslToHex(c.h,c.s,c.l),rgb:hslToRgb(c.h,c.s,c.l)}));
+  let content,filename,type;
+  if(format==='json'){
+    content=JSON.stringify({exported:new Date().toISOString(),count:colors.length,colors:labeled},null,2);
+    filename='chromix-palette.json';type='application/json';
+  }else{
+    const vars=labeled.map(c=>`  --color-${c.index}: ${c.hex};`).join('\n');
+    content=`:root {\n${vars}\n}`;
+    filename='chromix-palette.css';type='text/css';
+  }
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUDIO ENGINE
+// ═══════════════════════════════════════════════════════════════════
+const AudioEngine=(()=>{
+  let ctx=null;
+  const get=()=>{if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();return ctx};
+  const tone=(freq,dur,type='sine',vol=0.22)=>{
+    try{
+      const a=get();
+      const osc=a.createOscillator(),g=a.createGain();
+      osc.connect(g);g.connect(a.destination);
+      osc.type=type;osc.frequency.value=freq;
+      g.gain.setValueAtTime(vol,a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+dur);
+      osc.start();osc.stop(a.currentTime+dur+0.01);
+    }catch(e){}
+  };
+  return{
+    click:()=>tone(1100,0.04,'square',0.08),
+    submit:()=>tone(500,0.1,'sine',0.18),
+    perfect:()=>{tone(523,.12);setTimeout(()=>tone(659,.12),110);setTimeout(()=>tone(784,.18),220);setTimeout(()=>tone(1047,.2),340)},
+    good:()=>{tone(440,.1);setTimeout(()=>tone(523,.12),100)},
+    fail:()=>tone(180,.3,'sawtooth',.12),
+    levelUp:()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.2),i*90)),
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  C1 STAR RATING SYSTEM — centralized, used across ALL modes
+// ═══════════════════════════════════════════════════════════════════
+function scoreToStars(score){
+  if(score>=95)return 5;
+  if(score>=85)return 4;
+  if(score>=70)return 3;
+  if(score>=50)return 2;
+  return 1;
+}
+function starLabel(n){return['TRY AGAIN','CLOSE','GOOD','EXCELLENT','PERFECT'][n-1]||'–'}
+
+// Rating history storage
+const RatingStore={
+  KEY:'chromix-ratings',
+  get(){try{return JSON.parse(localStorage.getItem(this.KEY)||'[]')}catch{return[]}},
+  add(score,mode=''){
+    const h=this.get();
+    const stars=scoreToStars(score);
+    h.unshift({score,stars,mode,ts:Date.now()});
+    if(h.length>20)h.pop();
+    try{localStorage.setItem(this.KEY,JSON.stringify(h))}catch{}
+    return stars;
+  }
+};
+
+// StarRating component — C1 style with glow
+function StarRating({score,show=true,mode='',size='normal'}){
+  const{C}=useTheme();
+  if(!show||score===null||score===undefined)return null;
+  const stars=scoreToStars(score);
+  const label=starLabel(stars);
+  const lbl=scoreLabel(score);
+  const starSize=size==='large'?34:size==='small'?16:22;
+  const glowColor='#ffd700';
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,animation:'fadeIn .3s ease'}}>
+      <div style={{display:'flex',gap:size==='small'?3:5,alignItems:'center'}}>
+        {Array.from({length:5},(_,i)=>(
+          <span key={i} style={{
+            fontSize:starSize,
+            color:i<stars?glowColor:'rgba(255,255,255,.12)',
+            filter:i<stars?`drop-shadow(0 0 ${size==='large'?8:5}px ${glowColor})`:'none',
+            animation:i<stars?`starPop .35s ${i*0.08}s ease both`:'none',
+            display:'inline-block',
+          }}>★</span>
+        ))}
+        {size!=='small'&&<span style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',color:C.textMuted,marginLeft:4}}>{label}</span>}
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <span style={{fontSize:size==='small'?11:13,fontWeight:700,fontFamily:'monospace',color:lbl.color,textShadow:`0 0 12px ${lbl.glow}`}}>{score}%</span>
+        {mode&&<span style={{fontSize:9,color:C.textMuted,letterSpacing:2}}>{mode.toUpperCase()}</span>}
+      </div>
+    </div>
+  );
+}
+
+// Last 3 ratings strip (C1-style)
+function RatingHistoryStrip({limit=3}){
+  const{C}=useTheme();
+  const[hist,setHist]=useState(()=>RatingStore.get().slice(0,limit));
+  useEffect(()=>{setHist(RatingStore.get().slice(0,limit))},[]);
+  if(!hist.length)return<span style={{fontSize:12,color:C.textMuted}}>No ratings yet — play a round first</span>;
+  return(
+    <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+      {hist.map((h,i)=>(
+        <div key={i} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:'8px 12px',textAlign:'center',minWidth:64}}>
+          <div style={{fontSize:10,color:'#ffd700',marginBottom:2,letterSpacing:1}}>
+            {'★'.repeat(h.stars)}{'☆'.repeat(5-h.stars)}
+          </div>
+          <div style={{fontSize:13,fontWeight:700,fontFamily:'monospace',color:C.textPrimary}}>{h.score}%</div>
+          <div style={{fontSize:9,color:C.textMuted,marginTop:1}}>{h.mode||'–'}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+// ═══════════════════════════════════════════════════════════════════
+//  CONTEXTS & PROVIDERS
+// ═══════════════════════════════════════════════════════════════════
+
+// Theme colors lookup
+const THEMES={
+  // ── DEFAULT: Deep space purple ──────────────────────────────────
+  default:{
+    bgPrimary:'#07080f',bgSecondary:'#0d0e1c',bgCard:'#111224',bgCardHover:'#181930',
+    border:'rgba(124,111,255,.18)',borderLight:'rgba(124,111,255,.32)',
+    textPrimary:'#eeeef8',textSecondary:'#9999cc',textMuted:'#4a4a72',
+    accent:'#7c6fff',accentGlow:'rgba(124,111,255,.5)',accentAlt:'#3ecfef',
+    success:'#3dffa0',warning:'#ffcc44',error:'#ff5533',
+    surfaceGlass:'rgba(13,14,28,.88)',
+    btnDark:'rgba(4,4,18,.75)',btnBorder:'rgba(124,111,255,.35)',btnGlow:'rgba(124,111,255,.4)',
+  },
+  // ── DARK: Absolute black — high contrast, clean ─────────────────
+  dark:{
+    bgPrimary:'#000000',bgSecondary:'#0a0a0a',bgCard:'#111111',bgCardHover:'#181818',
+    border:'rgba(255,255,255,.08)',borderLight:'rgba(255,255,255,.15)',
+    textPrimary:'#ffffff',textSecondary:'#b0b0c8',textMuted:'#666680',
+    accent:'#7c6fff',accentGlow:'rgba(124,111,255,.45)',accentAlt:'#3ecfef',
+    success:'#3dffa0',warning:'#ffcc44',error:'#ff5533',
+    surfaceGlass:'rgba(0,0,0,.92)',
+    btnDark:'rgba(0,0,0,.9)',btnBorder:'rgba(255,255,255,.14)',btnGlow:'rgba(124,111,255,.4)',
+  },
+  // ── LIGHT: Clean white with rich contrast ───────────────────────
+  light:{
+    bgPrimary:'#ffffff',bgSecondary:'#f0f0f5',bgCard:'#f4f4f8',bgCardHover:'#e8e8f0',
+    border:'#d0d0e0',borderLight:'#b0b0cc',
+    textPrimary:'#0a0a1a',textSecondary:'#444488',textMuted:'#8888aa',
+    accent:'#4455ee',accentGlow:'rgba(68,85,238,.25)',accentAlt:'#0099bb',
+    success:'#009944',warning:'#bb7700',error:'#cc2200',
+    surfaceGlass:'rgba(255,255,255,.9)',
+    btnDark:'rgba(10,10,30,.82)',btnBorder:'rgba(68,85,238,.45)',btnGlow:'rgba(68,85,238,.3)',
+  },
+};
+const THEME_NAMES=['default','dark','light'];
+const THEME_ICONS={'default':'🌈','dark':'🌙','light':'☀'};
+
+const ThemeCtx=createContext({theme:'default',C:THEMES.default,cycleTheme:()=>{}});
+const useTheme=()=>useContext(ThemeCtx);
+
+function ThemeProvider({children}){
+  const[theme,setTheme]=useState(()=>localStorage.getItem('chromix-theme')||'default');
+  const C=THEMES[theme]||THEMES.default;
+  const cycleTheme=useCallback(()=>setTheme(t=>{const i=(THEME_NAMES.indexOf(t)+1)%3;const n=THEME_NAMES[i];localStorage.setItem('chromix-theme',n);return n}),[]);
+  useEffect(()=>{document.documentElement.setAttribute('data-theme',theme)},[theme]);
+  return<ThemeCtx.Provider value={{theme,C,cycleTheme}}>{children}</ThemeCtx.Provider>;
+}
+
+const SettingsCtx=createContext(null);
+const useSettings=()=>useContext(SettingsCtx);
+function SettingsProvider({children}){
+  const[s,setS]=useState(()=>{
+    try{const saved=JSON.parse(localStorage.getItem('chromix-settings')||'{}');return{wheelSize:300,ringThicknessRatio:.115,triRadiusRatio:.315,sensitivity:1.0,scoringStrictness:'standard',precisionMode:false,soundEnabled:false,...saved}}
+    catch{return{wheelSize:300,ringThicknessRatio:.115,triRadiusRatio:.315,sensitivity:1.0,scoringStrictness:'standard',precisionMode:false,soundEnabled:false}}
+  });
+  const update=useCallback(patch=>{
+    setS(prev=>{const n={...prev,...patch};try{localStorage.setItem('chromix-settings',JSON.stringify(n))}catch{}return n});
+  },[]);
+  return<SettingsCtx.Provider value={{s,update}}>{children}</SettingsCtx.Provider>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  C1 LEVEL DEFINITIONS — Harmony-based progression
+// ═══════════════════════════════════════════════════════════════════
+const HARMONY_LEVELS=[
+  {id:1,name:'Complementary',icon:'⚡',color:'#ff6b6b',desc:'Find the color exactly opposite on the wheel — 180° away.',
+   tasks:[
+     {title:'Find the Complement',desc:'Drag the marker 180° away from the base color.',markerCount:1,type:'complementary'},
+     {title:'Blue Complement',desc:'Blue-based hue shown. Place marker at its complementary orange.',markerCount:1,type:'complementary'},
+     {title:'Random Complement',desc:'New random base — find its exact opposite on the hue ring.',markerCount:1,type:'complementary'},
+   ]},
+  {id:2,name:'Analogous',icon:'🔗',color:'#44ff88',desc:'Find neighboring colors within ±30° of the base.',
+   tasks:[
+     {title:'Find +30° Neighbor',desc:'Place marker exactly 30° clockwise from the base hue.',markerCount:1,type:'analogous_plus'},
+     {title:'Find −30° Neighbor',desc:'Place marker exactly 30° counter-clockwise from the base hue.',markerCount:1,type:'analogous_minus'},
+     {title:'Both Neighbors',desc:'Place two markers — one at +30° and one at −30° from base.',markerCount:2,type:'analogous'},
+   ]},
+  {id:3,name:'Triadic',icon:'△',color:'#7c6fff',desc:'Three colors evenly spaced 120° apart. Base is set — place the other two.',
+   tasks:[
+     {title:'First Triadic Point',desc:'Place marker at exactly +120° from the base color.',markerCount:1,type:'triadic_1'},
+     {title:'Second Triadic Point',desc:'Place marker at exactly +240° from the base color.',markerCount:1,type:'triadic_2'},
+     {title:'Complete the Triangle',desc:'Place both triadic partners at +120° and +240° from base.',markerCount:2,type:'triadic'},
+   ]},
+  {id:4,name:'Tetradic',icon:'□',color:'#3ecfef',desc:'Four colors at 90° intervals. Place the three partners for the base.',
+   tasks:[
+     {title:'+90° Partner',desc:'Place marker 90° clockwise from the base.',markerCount:1,type:'tetradic_1'},
+     {title:'+180° Partner',desc:'Place marker 180° from base — the complement.',markerCount:1,type:'tetradic_2'},
+     {title:'+270° Partner',desc:'Place marker 270° from base.',markerCount:1,type:'tetradic_3'},
+     {title:'Full Tetradic Set',desc:'Place all three partners at +90°, +180°, and +270° from base.',markerCount:3,type:'tetradic'},
+   ]},
+  {id:5,name:'Hue Match',icon:'🎯',color:'#ffcc44',desc:'Match a given target hue as precisely as possible.',
+   tasks:[
+     {title:'Match the Target',desc:'Drag the marker to match the target hue shown exactly.',markerCount:1,type:'hue_match'},
+     {title:'Warm Color',desc:'Place marker in warm range: 0°–90° (reds, oranges, yellows).',markerCount:1,type:'hue_warm'},
+     {title:'Cool Color',desc:'Place marker in cool range: 150°–300°.',markerCount:1,type:'hue_cool'},
+   ]},
+  {id:6,name:'Saturation',icon:'🎨',color:'#cc88ff',desc:'Control color vividness.',
+   tasks:[
+     {title:'Maximize Saturation',desc:'Drag the slider to 100% — full vivid color.',markerCount:0,type:'sat_max'},
+     {title:'Create a Pastel',desc:'Bring saturation below 25% for a soft pastel tone.',markerCount:0,type:'sat_pastel'},
+     {title:'Match the Level',desc:'Match the target saturation shown in the reference swatch.',markerCount:0,type:'sat_match'},
+   ]},
+];
+
+// Harmony level store
+const HarmonyStore={
+  KEY:'chromix-harmony',
+  load(){try{return JSON.parse(localStorage.getItem(this.KEY)||'{}')}catch{return{}}},
+  save(d){try{localStorage.setItem(this.KEY,JSON.stringify(d))}catch{}},
+  getBest(id){const d=this.load();return d[id]?d[id].best:0},
+  isUnlocked(id){if(id===1)return true;return this.getBest(id-1)>=80},
+  isCompleted(id){return this.getBest(id)>=80},
+  record(id,score){
+    const d=this.load();
+    const prev=d[id]||{best:0,attempts:0};
+    d[id]={best:Math.max(prev.best,score),attempts:prev.attempts+1};
+    this.save(d);
+  }
+};
+
+// Harmony target calculations
+function getHarmonyTargets(type,baseHue){
+  const n=h=>HarmonyMath.norm(h);
+  switch(type){
+    case'complementary':  return[{hue:n(baseHue+180),label:'+180°'}];
+    case'analogous_plus': return[{hue:n(baseHue+30),label:'+30°'}];
+    case'analogous_minus':return[{hue:n(baseHue-30),label:'−30°'}];
+    case'analogous':      return[{hue:n(baseHue+30),label:'+30°'},{hue:n(baseHue-30),label:'−30°'}];
+    case'triadic_1':      return[{hue:n(baseHue+120),label:'+120°'}];
+    case'triadic_2':      return[{hue:n(baseHue+240),label:'+240°'}];
+    case'triadic':        return[{hue:n(baseHue+120),label:'+120°'},{hue:n(baseHue+240),label:'+240°'}];
+    case'tetradic_1':     return[{hue:n(baseHue+90),label:'+90°'}];
+    case'tetradic_2':     return[{hue:n(baseHue+180),label:'+180°'}];
+    case'tetradic_3':     return[{hue:n(baseHue+270),label:'+270°'}];
+    case'tetradic':       return[{hue:n(baseHue+90),label:'+90°'},{hue:n(baseHue+180),label:'+180°'},{hue:n(baseHue+270),label:'+270°'}];
+    case'hue_match':      return[{hue:baseHue,label:`${Math.round(baseHue)}°`}];
+    case'hue_warm':       return[{hue:45,label:'Warm (0°–90°)',tol:45}];
+    case'hue_cool':       return[{hue:220,label:'Cool (150°–300°)',tol:75}];
+    default:              return[];
+  }
+}
+function getOverlayMode(type){
+  if(type.startsWith('triadic'))return'triangle';
+  if(type.startsWith('tetradic'))return'rect';
+  return'lines';
+}
+function isSatMode(type){return type.startsWith('sat_')}
+
+function calcHarmonyScore(task,playerHues,playerSat,satTarget){
+  if(isSatMode(task.type)){
+    if(task.type==='sat_max')   return HarmonyMath.satScore(playerSat,100,30);
+    if(task.type==='sat_pastel')return HarmonyMath.satScore(playerSat,15,30);
+    if(task.type==='sat_match') return HarmonyMath.satScore(playerSat,Math.round(satTarget),30);
+    return 0;
+  }
+  const targets=getHarmonyTargets(task.type,0); // baseHue handled externally
+  if(!playerHues.length)return 0;
+  return 0; // computed in component with proper baseHue
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HOOKS
+// ═══════════════════════════════════════════════════════════════════
+function useColorHistory(maxLen=24){
+  const[history,setHistory]=useState([]);
+  const push=useCallback(c=>setHistory(h=>[{...c,ts:Date.now()},...h].slice(0,maxLen)),[maxLen]);
+  const clear=useCallback(()=>setHistory([]),[]);
+  return{history,push,clear};
+}
+
+function useContainerSize(){
+  const ref=useRef(null);
+  const[size,setSize]=useState({width:0,height:0});
+  useEffect(()=>{
+    const el=ref.current;if(!el)return;
+    setSize({width:el.offsetWidth,height:el.offsetHeight});
+    if(!window.ResizeObserver)return;
+    const ro=new ResizeObserver(entries=>{
+      for(const e of entries){const{width,height}=e.contentRect;setSize({width:Math.floor(width),height:Math.floor(height)})}
+    });
+    ro.observe(el);return()=>ro.disconnect();
+  },[]);
+  return[ref,size];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COLOR WHEEL — dual-canvas barycentric triangle (ChromaLab v4, untouched)
+// ═══════════════════════════════════════════════════════════════════
+const MIN_WHEEL=180,MAX_WHEEL=380;
+
+function ColorWheel({color,onChange,locked=false,showTarget=false,targetColor=null,size:sizeProp}){
+  const{s:cfg}=useSettings();
+  const size=sizeProp??Math.min(MAX_WHEEL,Math.max(MIN_WHEEL,cfg.wheelSize));
+  const bgRef=useRef(null),fgRef=useRef(null);
+  const dragRef=useRef(null);
+  const triCache=useRef({hue:-999,imageData:null});
+  const rafId=useRef(null);
+  const outerR=size*.47,thick=Math.max(8,size*cfg.ringThicknessRatio),innerR=outerR-thick,triR=size*cfg.triRadiusRatio;
+  const cx=size/2,cy=size/2,hR=Math.max(7,size*.038);
+
+  const drawRing=useCallback(()=>{
+    const canvas=bgRef.current;if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    const SEG=720;
+    for(let i=0;i<SEG;i++){
+      const a0=(i/SEG)*TAU-Math.PI/2,a1=((i+1)/SEG)*TAU-Math.PI/2;
+      ctx.beginPath();ctx.arc(cx,cy,outerR,a0,a1);ctx.arc(cx,cy,innerR,a1,a0,true);ctx.closePath();
+      ctx.fillStyle=`hsl(${(i/SEG)*360},100%,50%)`;ctx.fill();
+    }
+  },[cx,cy,outerR,innerR]);
+
+  const drawTriangle=useCallback(()=>{
+    const canvas=bgRef.current;if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    const hKey=Math.round(color.h);
+    if(triCache.current.hue===hKey&&triCache.current.imageData){ctx.putImageData(triCache.current.imageData,0,0);return}
+    const imgData=ctx.getImageData(0,0,size,size),d=imgData.data;
+    const verts=triVertices(cx,cy,triR,color.h);
+    const[vH,vW,vB]=verts,pureHue=hsvToRgb(color.h,1,1);
+    const minX=Math.max(0,Math.floor(Math.min(vH.x,vW.x,vB.x))-1);
+    const maxX=Math.min(size-1,Math.ceil(Math.max(vH.x,vW.x,vB.x))+1);
+    const minY=Math.max(0,Math.floor(Math.min(vH.y,vW.y,vB.y))-1);
+    const maxY=Math.min(size-1,Math.ceil(Math.max(vH.y,vW.y,vB.y))+1);
+    const denom=(vW.y-vB.y)*(vH.x-vB.x)+(vB.x-vW.x)*(vH.y-vB.y);
+    if(Math.abs(denom)<1e-10)return;
+    const inv=1/denom,eps=0.004;
+    for(let py=minY;py<=maxY;py++){
+      for(let px=minX;px<=maxX;px++){
+        if((px-cx)**2+(py-cy)**2>innerR*innerR)continue;
+        const w0=((vW.y-vB.y)*(px-vB.x)+(vB.x-vW.x)*(py-vB.y))*inv;
+        const w1=((vB.y-vH.y)*(px-vB.x)+(vH.x-vB.x)*(py-vB.y))*inv;
+        const w2=1-w0-w1;
+        if(w0>=-eps&&w1>=-eps&&w2>=-eps){
+          const wh=Math.max(0,w0),ww=Math.max(0,w1);
+          const idx=(py*size+px)*4;
+          d[idx]=Math.min(255,Math.round(wh*pureHue.r+ww*255));
+          d[idx+1]=Math.min(255,Math.round(wh*pureHue.g+ww*255));
+          d[idx+2]=Math.min(255,Math.round(wh*pureHue.b+ww*255));
+          d[idx+3]=255;
+        }
+      }
+    }
+    ctx.putImageData(imgData,0,0);
+    triCache.current={hue:hKey,imageData:ctx.getImageData(0,0,size,size)};
+  },[color.h,cx,cy,triR,innerR,size]);
+
+  const drawHandles=useCallback(()=>{
+    const canvas=fgRef.current;if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,size,size);
+    const ring_θ=(color.h-90)*DEG;
+    const hueHdl={x:cx+(innerR+thick/2)*Math.cos(ring_θ),y:cy+(innerR+thick/2)*Math.sin(ring_θ)};
+    const svHdl=hslToTriPos(color,cx,cy,triR);
+    const drawH=(pos,fill,dashed=false,dimmed=false)=>{
+      ctx.save();
+      if(dimmed)ctx.globalAlpha=0.5;
+      ctx.beginPath();ctx.arc(pos.x,pos.y,hR+(dashed?5:0),0,TAU);
+      ctx.fillStyle=dashed?'transparent':fill;
+      ctx.strokeStyle=dashed?'rgba(255,255,255,.55)':'rgba(255,255,255,.9)';
+      ctx.lineWidth=dashed?1.5:2.5;
+      if(!dashed)ctx.fill();ctx.stroke();
+      ctx.setLineDash([]);ctx.restore();
+    };
+    if(showTarget&&targetColor){
+      const tθ=(targetColor.h-90)*DEG;
+      drawH({x:cx+(innerR+thick/2)*Math.cos(tθ),y:cy+(innerR+thick/2)*Math.sin(tθ)},'#fff',true,true);
+      drawH(hslToTriPos(targetColor,cx,cy,triR),'#fff',true,true);
+    }
+    ctx.save();
+    ctx.beginPath();ctx.arc(hueHdl.x,hueHdl.y,hR+8,0,TAU);
+    ctx.fillStyle=`hsla(${color.h},100%,55%,.18)`;ctx.fill();ctx.restore();
+    drawH(hueHdl,`hsl(${color.h},100%,55%)`);
+    drawH(svHdl,`hsl(${color.h},${Math.round(color.s)}%,${Math.round(color.l)}%)`);
+  },[color,targetColor,showTarget,cx,cy,innerR,thick,triR,hR,size]);
+
+  const redrawBg=useCallback(()=>{
+    const canvas=bgRef.current;if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,size,size);
+    ctx.save();ctx.beginPath();ctx.arc(cx,cy,outerR+3,0,TAU);
+    ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=3;ctx.stroke();ctx.restore();
+    drawRing();drawTriangle();
+  },[cx,cy,outerR,size,drawRing,drawTriangle]);
+
+  const prevHue=useRef(-1);
+  useEffect(()=>{
+    if(Math.round(color.h)!==Math.round(prevHue.current)){triCache.current={hue:-999,imageData:null};prevHue.current=color.h}
+    redrawBg();
+  },[color.h,redrawBg]);
+
+  useEffect(()=>{
+    if(rafId.current)cancelAnimationFrame(rafId.current);
+    rafId.current=requestAnimationFrame(drawHandles);
+    return()=>{if(rafId.current)cancelAnimationFrame(rafId.current)};
+  },[drawHandles]);
+
+  const getPos=useCallback(e=>{
+    const rect=fgRef.current.getBoundingClientRect(),scale=size/rect.width;
+    const src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-rect.left)*scale,y:(src.clientY-rect.top)*scale};
+  },[size]);
+  const onDown=useCallback(e=>{
+    if(locked)return;e.preventDefault();
+    const{x,y}=getPos(e);
+    if(hitRing(x,y,cx,cy,innerR-4,outerR+4)){dragRef.current='hue';onChange({...color,h:angleToHue(x,y,cx,cy)})}
+    else if((x-cx)**2+(y-cy)**2<innerR*innerR){dragRef.current='sv';onChange(triPosToHsl(x,y,color.h,cx,cy,triR))}
+  },[locked,getPos,cx,cy,innerR,outerR,triR,color,onChange]);
+  const onMove=useCallback(e=>{
+    if(!dragRef.current||locked)return;e.preventDefault();
+    const{x,y}=getPos(e);
+    if(dragRef.current==='hue')onChange({...color,h:angleToHue(x,y,cx,cy)});
+    else onChange(triPosToHsl(x,y,color.h,cx,cy,triR));
+  },[locked,getPos,cx,cy,triR,color,onChange]);
+  const onUp=useCallback(()=>{dragRef.current=null},[]);
+
+  return(
+    <div style={{position:'relative',width:size,height:size,flexShrink:0}}>
+      <canvas ref={bgRef} width={size} height={size} style={{position:'absolute',inset:0,borderRadius:'50%'}}/>
+      <canvas ref={fgRef} width={size} height={size}
+        style={{position:'absolute',inset:0,borderRadius:'50%',cursor:locked?'default':'crosshair',touchAction:'none'}}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+      />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HUE RING WHEEL — C1-style, ring-only with multi-marker support
+// ═══════════════════════════════════════════════════════════════════
+function HueRingWheel({baseHue,markers,onMarkerMove,overlayMode,size=300}){
+  const bgRef=useRef(null),fgRef=useRef(null);
+  const dragIdx=useRef(-1);
+  const activeIdx=useRef(markers.findIndex(m=>m.draggable));
+  const W=size,outerR=W*.47,ringRatio=0.14,innerR=outerR*(1-ringRatio),cx=W/2,cy=W/2;
+
+  // Draw background ring
+  const drawBg=useCallback(()=>{
+    const canvas=bgRef.current;if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,W,W);
+    const SEG=720;
+    for(let i=0;i<SEG;i++){
+      const a0=(i/SEG)*TAU-Math.PI/2,a1=((i+1)/SEG)*TAU-Math.PI/2;
+      ctx.beginPath();ctx.arc(cx,cy,outerR,a0,a1);ctx.arc(cx,cy,innerR,a1,a0,true);ctx.closePath();
+      ctx.fillStyle=`hsl(${(i/SEG)*360},100%,50%)`;ctx.fill();
+    }
+    // Dark center
+    const grad=ctx.createRadialGradient(cx,cy-innerR*.05,0,cx,cy,innerR);
+    grad.addColorStop(0,`hsl(${baseHue},16%,14%)`);grad.addColorStop(1,`hsl(${baseHue},10%,7%)`);
+    ctx.beginPath();ctx.arc(cx,cy,innerR-1,0,TAU);ctx.fillStyle=grad;ctx.fill();
+  },[W,cx,cy,outerR,innerR,baseHue]);
+
+  const ringR=()=>(outerR+innerR)/2;
+  const hueToXY=(h,r)=>{const a=(h-90)*DEG;return{x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)}};
+
+  const drawFg=useCallback(()=>{
+    const canvas=fgRef.current;if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,W,W);
+    const rr=ringR();
+
+    // Overlay lines/shapes
+    if(overlayMode&&markers.length){
+      const bPt=hueToXY(baseHue,rr);
+      const mPts=markers.map(m=>hueToXY(m.hue,rr));
+      const all=[bPt,...mPts];
+      ctx.save();ctx.setLineDash([5,5]);ctx.lineWidth=1.5;ctx.strokeStyle='rgba(255,255,255,.18)';
+      if(overlayMode==='triangle'&&all.length>=3){
+        ctx.beginPath();all.slice(0,3).forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.closePath();ctx.stroke();
+      }else if(overlayMode==='rect'&&all.length>=4){
+        ctx.beginPath();all.slice(0,4).forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.closePath();ctx.stroke();
+        ctx.beginPath();ctx.moveTo(all[0].x,all[0].y);ctx.lineTo(all[2].x,all[2].y);ctx.moveTo(all[1].x,all[1].y);ctx.lineTo(all[3].x,all[3].y);ctx.stroke();
+      }else{
+        all.forEach(p=>{ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p.x,p.y);ctx.stroke()});
+      }
+      // Arcs
+      markers.forEach(m=>{
+        const a1=(baseHue-90)*DEG,a2=(m.hue-90)*DEG,r2=rr+14;
+        ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,r2,Math.min(a1,a2),Math.max(a1,a2));
+        ctx.strokeStyle=`hsla(${m.hue},80%,60%,.22)`;ctx.lineWidth=2;ctx.stroke();
+      });
+      ctx.setLineDash([]);ctx.restore();
+    }
+
+    // Draw all markers
+    markers.forEach((m,i)=>{
+      const pt=hueToXY(m.hue,rr);
+      const R=12,isAct=m.draggable&&i===activeIdx.current;
+      if(isAct){ctx.save();ctx.beginPath();ctx.arc(pt.x,pt.y,R+8,0,TAU);ctx.fillStyle=`hsla(${m.hue},80%,55%,.2)`;ctx.fill();ctx.restore()}
+      ctx.save();ctx.shadowColor=`hsl(${m.hue},70%,35%)`;ctx.shadowBlur=m.draggable?14:7;
+      ctx.beginPath();ctx.arc(pt.x,pt.y,R,0,TAU);ctx.fillStyle=`hsl(${m.hue},88%,55%)`;ctx.fill();ctx.restore();
+      ctx.beginPath();ctx.arc(pt.x,pt.y,R,0,TAU);
+      ctx.strokeStyle=m.isBase?'rgba(255,255,255,.95)':(m.draggable?'rgba(255,255,255,.85)':'rgba(255,255,255,.35)');
+      ctx.lineWidth=m.isBase?2.5:2;ctx.stroke();
+      ctx.save();ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillStyle='rgba(255,255,255,.82)';
+      const above=pt.y<cy;ctx.fillText(m.label,pt.x,pt.y+(above?R+12:-(R+3)));ctx.restore();
+    });
+  },[W,cx,cy,outerR,innerR,baseHue,markers,overlayMode]);
+
+  useEffect(()=>{drawBg()},[drawBg]);
+  useEffect(()=>{requestAnimationFrame(drawFg)},[drawFg]);
+
+  const getPos=e=>{
+    const rect=fgRef.current.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-rect.left)*(W/rect.width),y:(src.clientY-rect.top)*(W/rect.height)};
+  };
+  const posToHue=(x,y)=>HarmonyMath.norm(Math.atan2(y-cy,x-cx)*180/Math.PI+90);
+  const onRing=(x,y)=>{const d=Math.hypot(x-cx,y-cy);return d>=innerR-12&&d<=outerR+12};
+  const nearestDraggable=(x,y)=>{
+    let best=-1,bestD=26;const rr=ringR();
+    markers.forEach((m,i)=>{
+      if(!m.draggable)return;const pt=hueToXY(m.hue,rr);
+      const d=Math.hypot(x-pt.x,y-pt.y);if(d<bestD){bestD=d;best=i}
+    });
+    return best;
+  };
+  const onDown=e=>{
+    e.preventDefault();const{x,y}=getPos(e);
+    const idx=nearestDraggable(x,y);
+    if(idx>=0){dragIdx.current=idx;activeIdx.current=idx;return}
+    if(onRing(x,y)){const first=markers.findIndex(m=>m.draggable);if(first>=0){dragIdx.current=first;activeIdx.current=first;onMarkerMove(first,posToHue(x,y))}}
+  };
+  const onMove=e=>{
+    if(dragIdx.current<0)return;e.preventDefault();
+    const{x,y}=getPos(e);onMarkerMove(dragIdx.current,posToHue(x,y));
+  };
+  const onUp=()=>{dragIdx.current=-1};
+  const nudge=delta=>{
+    const draggables=markers.map((m,i)=>({m,i})).filter(x=>x.m.draggable);
+    if(!draggables.length)return;
+    if(!markers[activeIdx.current]||!markers[activeIdx.current].draggable)activeIdx.current=draggables[0].i;
+    onMarkerMove(activeIdx.current,HarmonyMath.norm(markers[activeIdx.current].hue+delta));
+  };
+
+  return(
+    <div style={{position:'relative',width:W,height:W,flexShrink:0}}>
+      <canvas ref={bgRef} width={W} height={W} style={{position:'absolute',inset:0,borderRadius:'50%'}}/>
+      <canvas ref={fgRef} width={W} height={W}
+        style={{position:'absolute',inset:0,borderRadius:'50%',cursor:'crosshair',touchAction:'none'}}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+      />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SHARED UI PRIMITIVES — C2 design language
+// ═══════════════════════════════════════════════════════════════════
+function Btn({onClick,children,variant='primary',small,style:sty,disabled,title}){
+  const{C}=useTheme();
+  const[hov,setHov]=useState(false);
+  const base={
+    border:'none',borderRadius:10,fontFamily:'inherit',cursor:disabled?'not-allowed':'pointer',
+    fontWeight:700,letterSpacing:'.07em',
+    transition:'transform .13s ease,box-shadow .18s ease,background .15s,border-color .15s,opacity .15s',
+    opacity:disabled?.35:1,
+    padding:small?'7px 14px':'11px 22px',fontSize:small?11:13,
+    display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,
+    transform:hov&&!disabled?'translateY(-2px) scale(1.015)':'translateY(0) scale(1)',
+    backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',
+  };
+  const D=C.btnDark||'rgba(0,0,0,.72)';  // dark box base
+  const B=C.btnBorder||C.borderLight;      // theme border
+  const G=C.btnGlow||C.accentGlow;         // glow colour
+  const variants={
+    primary:{
+      background:`linear-gradient(135deg,${C.accent},${C.accentAlt})`,
+      color:'#fff',
+      border:'none',
+      boxShadow:hov
+        ?`0 8px 32px ${G},0 0 0 1px ${C.accent}55,inset 0 1px 0 rgba(255,255,255,.18)`
+        :`0 4px 20px ${G},0 0 0 1px ${C.accent}33,inset 0 1px 0 rgba(255,255,255,.12)`,
+      textShadow:'0 1px 4px rgba(0,0,0,.3)',
+    },
+    secondary:{
+      background:D,
+      border:`1px solid ${B}`,
+      color:C.textPrimary,
+      boxShadow:hov
+        ?`0 6px 24px ${G},0 0 0 1px ${B},inset 0 1px 0 rgba(255,255,255,.07)`
+        :`0 2px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04)`,
+    },
+    ghost:{
+      background:`${D.replace(/[\d.]+\)$/,'0.52)')}`,
+      border:`1px solid ${C.border}`,
+      color:C.textSecondary,
+      boxShadow:hov
+        ?`0 4px 18px rgba(0,0,0,.6),0 0 0 1px ${C.border}`
+        :`0 1px 6px rgba(0,0,0,.35)`,
+    },
+    danger:{
+      background:`linear-gradient(135deg,#aa1500,#ee3311)`,
+      color:'#fff',
+      border:'none',
+      boxShadow:hov
+        ?`0 6px 24px rgba(200,30,0,.6),0 0 0 1px rgba(255,80,50,.4),inset 0 1px 0 rgba(255,255,255,.12)`
+        :`0 3px 14px rgba(200,30,0,.4),inset 0 1px 0 rgba(255,255,255,.08)`,
+    },
+    accent:{
+      background:D,
+      border:`1px solid ${C.accent}55`,
+      color:C.accent,
+      boxShadow:hov
+        ?`0 5px 22px ${G},0 0 0 1px ${C.accent}44`
+        :`0 2px 10px rgba(0,0,0,.4),0 0 0 1px ${C.accent}22`,
+      textShadow:hov?`0 0 12px ${G}`:undefined,
+    },
+  };
+  return<button title={title} onClick={disabled?undefined:onClick}
+    onMouseEnter={()=>setHov(true)}
+    onMouseLeave={()=>setHov(false)}
+    onMouseDown={e=>{e.currentTarget.style.transform='translateY(0) scale(.97)'}}
+    onMouseUp={e=>{e.currentTarget.style.transform=hov?'translateY(-2px) scale(1.015)':'translateY(0) scale(1)'}}
+    style={{...base,...variants[variant],...sty}}>{children}</button>;
+}
+function Card({children,style:sty,onClick}){
+  const{C}=useTheme();
+  return<div onClick={onClick} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,padding:18,...sty}}>{children}</div>;
+}
+function Badge({children,color='#fff',bg='rgba(255,255,255,.1)',style:sty}){
+  return<span style={{background:bg,color,borderRadius:20,padding:'3px 10px',fontSize:10,fontWeight:700,letterSpacing:'.1em',display:'inline-flex',alignItems:'center',gap:4,...sty}}>{children}</span>;
+}
+function Tag({label,value,C}){
+  return<div style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
+    <span style={{color:C.textMuted,fontSize:10,letterSpacing:2}}>{label}</span>
+    <span style={{color:C.textSecondary,fontFamily:'monospace',fontSize:11}}>{value}</span>
+  </div>;
+}
+function Toggle({on,onToggle,label,C}){
+  return<div onClick={onToggle} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',cursor:'pointer',borderBottom:`1px solid ${C.border}`}}>
+    <span style={{color:C.textSecondary,fontSize:13}}>{label}</span>
+    <div style={{width:36,height:20,borderRadius:10,background:on?C.accent:C.border,transition:'background .2s',position:'relative',flexShrink:0}}>
+      <div style={{position:'absolute',top:2,left:on?18:2,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .2s'}}/>
+    </div>
+  </div>;
+}
+
+// Score Ring (HSL mode result display)
+function ScoreRing({score,deltaE,show}){
+  const{C}=useTheme();
+  const lbl=scoreLabel(score);
+  const r=44,sw=8,c=50;
+  const circ=2*Math.PI*r;
+  const dash=show?(circ*(score/100)):0;
+  return<div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
+    <svg width={100} height={100}>
+      <circle cx={c} cy={c} r={r} fill="none" stroke={C.border} strokeWidth={sw}/>
+      <circle cx={c} cy={c} r={r} fill="none" stroke={lbl.color} strokeWidth={sw}
+        strokeDasharray={`${dash} ${circ}`} strokeDashoffset={circ/4}
+        style={{transition:'stroke-dasharray .6s ease',filter:`drop-shadow(0 0 6px ${lbl.glow})`}}
+        strokeLinecap="round"/>
+      <text x={c} y={c-6} textAnchor="middle" fill={lbl.color} fontSize={24} fontWeight={800} fontFamily="JetBrains Mono">{score}</text>
+      <text x={c} y={c+14} textAnchor="middle" fill={C.textMuted} fontSize={9} fontFamily="Syne" letterSpacing={2}>{lbl.text}</text>
+    </svg>
+    <StarRating score={score} size="small"/>
+    <span style={{fontSize:10,color:C.textMuted,fontFamily:'monospace'}}>ΔE₀₀ = {deltaE.toFixed(2)}</span>
+  </div>;
+}
+
+function AccuracyBar({score,deltaE,C}){
+  const lbl=scoreLabel(score);
+  return<div>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+      <span style={{color:C.textMuted,fontSize:10,letterSpacing:2}}>ACCURACY</span>
+      <span style={{color:lbl.color,fontSize:13,fontFamily:'monospace',fontWeight:700}}>{score}%</span>
+    </div>
+    <div style={{height:6,background:C.border,borderRadius:3,overflow:'hidden'}}>
+      <div style={{height:'100%',width:`${score}%`,background:`linear-gradient(90deg,${lbl.color}99,${lbl.color})`,borderRadius:3,transition:'width .08s,background .2s',boxShadow:`0 0 8px ${lbl.glow}`}}/>
+    </div>
+    <div style={{color:C.textMuted,fontSize:10,marginTop:5,fontFamily:'monospace',textAlign:'right'}}>ΔE live: {deltaE.toFixed(2)}</div>
+  </div>;
+}
+
+function ExpertPanel({targetLab,attemptLab,deltaE,C}){
+  const{dL,dC,dH}=deltaEComponents(targetLab,attemptLab);
+  const bars=[{label:'ΔL (Lightness)',val:dL,max:30,color:'#3ecfef'},{label:'ΔC (Chroma)',val:dC,max:30,color:'#ff9966'},{label:'ΔH (Hue)',val:dH,max:30,color:'#aa88ff'},{label:'ΔE₀₀ (Total)',val:deltaE,max:30,color:'#3dffa0'}];
+  return<div style={{background:C.bgSecondary,border:`1px solid ${C.border}`,borderRadius:12,padding:14}}>
+    <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:10}}>EXPERT ANALYSIS</div>
+    {bars.map(({label,val,max,color})=>(
+      <div key={label} style={{marginBottom:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+          <span style={{color:C.textMuted,fontSize:10}}>{label}</span>
+          <span style={{color,fontFamily:'monospace',fontSize:11,fontWeight:700}}>{val.toFixed(2)}</span>
+        </div>
+        <div style={{height:4,background:C.border,borderRadius:2}}>
+          <div style={{height:'100%',width:`${Math.min(100,(val/max)*100)}%`,background:color,borderRadius:2,transition:'width .3s'}}/>
+        </div>
+      </div>
+    ))}
+  </div>;
+}
+
+function PrecisionPanel({color,targetColor,C}){
+  const rgb=hslToRgb(color.h,color.s,color.l);
+  const lab=rgbToLab(rgb);
+  return<div style={{background:C.bgSecondary,border:`1px solid ${C.border}`,borderRadius:12,padding:12,fontFamily:'monospace',fontSize:10,lineHeight:1.9}}>
+    <div style={{color:C.textMuted,letterSpacing:2,marginBottom:6}}>PRECISION READOUT</div>
+    <div style={{color:C.textSecondary}}>HSL: {Math.round(color.h)}° {Math.round(color.s)}% {Math.round(color.l)}%</div>
+    <div style={{color:C.textSecondary}}>RGB: {rgb.r}, {rgb.g}, {rgb.b}</div>
+    <div style={{color:C.textSecondary}}>HEX: {rgbToHex(rgb)}</div>
+    <div style={{color:C.textSecondary}}>Lab: L{lab.L.toFixed(1)} a{lab.a.toFixed(1)} b{lab.b.toFixed(1)}</div>
+    {targetColor&&(()=>{const tRgb=hslToRgb(targetColor.h,targetColor.s,targetColor.l);const tLab=rgbToLab(tRgb);const dE=deltaE2000(lab,tLab);return<div style={{color:'#ff9966',marginTop:4}}>ΔE₀₀ live: <strong>{dE.toFixed(3)}</strong></div>})()}
+  </div>;
+}
+
+function CorrectionOverlay({target,attempt,visible,onDismiss,C}){
+  if(!visible)return null;
+  return<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',animation:'fadeIn .2s ease'}}>
+    <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:20,padding:32,maxWidth:360,textAlign:'center',width:'90%'}}>
+      <div style={{color:C.textMuted,fontSize:11,letterSpacing:2,marginBottom:16}}>CORRECTION OVERLAY</div>
+      <div style={{display:'flex',gap:20,justifyContent:'center',marginBottom:24}}>
+        <div><div style={{width:80,height:80,borderRadius:12,background:`hsl(${attempt.h},${attempt.s}%,${attempt.l}%)`,margin:'0 auto 6px'}}/><span style={{color:C.textMuted,fontSize:10}}>YOURS</span></div>
+        <div style={{display:'flex',alignItems:'center',color:C.textMuted,fontSize:20}}>↔</div>
+        <div><div style={{width:80,height:80,borderRadius:12,background:`hsl(${target.h},${target.s}%,${target.l}%)`,margin:'0 auto 6px'}}/><span style={{color:C.textMuted,fontSize:10}}>TARGET</span></div>
+      </div>
+      <Btn onClick={onDismiss} variant="secondary" small>Got it</Btn>
+    </div>
+  </div>;
+}
+
+function HistoryTimeline({history,onSelect,onExport,C}){
+  const[replaying,setReplaying]=useState(false);
+  const[replayIdx,setReplayIdx]=useState(0);
+  const startReplay=()=>{
+    if(!history.length)return;
+    setReplaying(true);setReplayIdx(0);
+    let i=0;const step=()=>{if(i>=history.length){setReplaying(false);return}setReplayIdx(i);onSelect(history[i]);i++;setTimeout(step,800)};step();
+  };
+  if(!history.length)return<div style={{color:C.textMuted,fontSize:11,padding:'8px 0'}}>No history yet — start matching colors.</div>;
+  return<div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:6}}>
+      <span style={{color:C.textMuted,fontSize:10,letterSpacing:2}}>{history.length} SWATCHES</span>
+      <div style={{display:'flex',gap:5}}>
+        <Btn onClick={startReplay} disabled={replaying} variant="ghost" small>▶ Replay</Btn>
+        <Btn onClick={()=>onExport('json')} variant="ghost" small>⬇ JSON</Btn>
+        <Btn onClick={()=>onExport('css')} variant="ghost" small>⬇ CSS</Btn>
+      </div>
+    </div>
+    <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+      {history.map((c,i)=>(
+        <div key={c.ts} onClick={()=>onSelect(c)}
+          style={{width:26,height:26,borderRadius:5,background:`hsl(${c.h},${c.s}%,${c.l}%)`,cursor:'pointer',transition:'transform .15s',outline:replaying&&i===replayIdx?'2px solid #fff':'none',transform:replaying&&i===replayIdx?'scale(1.25)':'scale(1)'}}
+          title={`H:${Math.round(c.h)}° S:${Math.round(c.s)}% L:${Math.round(c.l)}%`}/>
+      ))}
+    </div>
+  </div>;
+}
+
+function WheelColumn({color,onChange,locked,target,attempt,phase,showTarget,targetColor,wheelSize:explicitSize}){
+  const{C}=useTheme();
+  const{s:cfg}=useSettings();
+  const[colRef,{width:colWidth}]=useContainerSize();
+  const wheelSize=explicitSize?Math.round(Math.min(MAX_WHEEL,Math.max(MIN_WHEEL,explicitSize))):colWidth>0?Math.round(Math.min(MAX_WHEEL,Math.max(MIN_WHEEL,colWidth*.97))):cfg.wheelSize;
+  const swatchH=Math.round(Math.min(72,Math.max(40,wheelSize*.18)));
+  const tBg=`hsl(${target.h},${target.s}%,${target.l}%)`;
+  const aBg=`hsl(${attempt.h},${attempt.s}%,${attempt.l}%)`;
+  const tTxt=target.l>55?'#111':'#fff',aTxt=attempt.l>55?'#111':'#fff';
+  return<div ref={colRef} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+    <div style={{width:wheelSize,height:swatchH,borderRadius:10,background:tBg,boxShadow:`0 4px 20px ${tBg}55`,display:'flex',alignItems:'center',justifyContent:'center',transition:'background .06s',flexShrink:0}}>
+      <span style={{color:tTxt,fontSize:10,opacity:.6,letterSpacing:'.15em',fontFamily:'monospace'}}>TARGET</span>
+    </div>
+    <ColorWheel color={color} onChange={phase==='play'?onChange:undefined} locked={locked} showTarget={showTarget} targetColor={targetColor} size={wheelSize}/>
+    <div style={{width:wheelSize,height:swatchH,borderRadius:10,background:aBg,boxShadow:`0 4px 20px ${aBg}44`,display:'flex',alignItems:'center',justifyContent:'center',transition:'background .06s',flexShrink:0}}>
+      <span style={{color:aTxt,fontSize:10,opacity:.6,letterSpacing:'.15em',fontFamily:'monospace'}}>YOURS</span>
+    </div>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GAME MODE — Classic
+// ═══════════════════════════════════════════════════════════════════
+function GameMode(){
+  const{C}=useTheme();
+  const{s:cfg}=useSettings();
+  const[difficulty,setDifficulty]=useState('medium');
+  const[phase,setPhase]=useState('play');
+  const[target,setTarget]=useState(()=>randomTarget('medium'));
+  const[attempt,setAttempt]=useState({h:180,s:50,l:50});
+  const[result,setResult]=useState(null);
+  const[rounds,setRounds]=useState([]);
+  const[streak,setStreak]=useState(0);
+  const[showExpert,setShowExpert]=useState(false);
+  const[showCorrection,setShowCorrection]=useState(false);
+  const startRef=useRef(Date.now());
+  const{history,push:pushHistory,clear:clearHistory}=useColorHistory();
+  const tRgb=hslToRgb(target.h,target.s,target.l),aRgb=hslToRgb(attempt.h,attempt.s,attempt.l);
+  const tLab=rgbToLab(tRgb),aLab=rgbToLab(aRgb);
+  const liveDeltaE=deltaE2000(tLab,aLab),liveScore=scoreFromDeltaE(liveDeltaE,cfg.scoringStrictness);
+  const lbl=scoreLabel(liveScore);
+  const handleChange=useCallback(c=>{setAttempt(c);pushHistory(c)},[pushHistory]);
+
+  useEffect(()=>{
+    const handler=e=>{
+      if(phase==='result'){if(e.key==='n'||e.key==='N'){next()};return}
+      const step=e.shiftKey?(cfg.sensitivity*.5):(cfg.sensitivity*1.5);
+      const bigStep=cfg.sensitivity*3;
+      switch(e.key){
+        case'ArrowLeft': setAttempt(p=>({...p,h:((p.h-bigStep)+360)%360})); e.preventDefault(); break;
+        case'ArrowRight': setAttempt(p=>({...p,h:(p.h+bigStep)%360})); e.preventDefault(); break;
+        case'ArrowUp': if(e.shiftKey)setAttempt(p=>({...p,s:Math.min(100,p.s+step)}));else setAttempt(p=>({...p,l:Math.min(100,p.l+step)})); e.preventDefault(); break;
+        case'ArrowDown': if(e.shiftKey)setAttempt(p=>({...p,s:Math.max(0,p.s-step)}));else setAttempt(p=>({...p,l:Math.max(0,p.l-step)})); e.preventDefault(); break;
+        case'Enter': submit(); break;
+        case'Tab': e.preventDefault(); setShowExpert(x=>!x); break;
+        case'1': changeDifficulty('novice'); break;
+        case'2': changeDifficulty('medium'); break;
+        case'3': changeDifficulty('hard'); break;
+        case'4': changeDifficulty('master'); break;
+      }
+    };
+    window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler);
+  },[phase,cfg,liveScore,liveDeltaE,target,attempt]);
+
+  const submit=()=>{
+    const timeMs=Date.now()-startRef.current;
+    const score=liveScore;
+    const newStreak=score>=75?streak+1:0;
+    setStreak(newStreak);
+    RatingStore.add(score,'Classic');
+    const r={score,deltaE:liveDeltaE,timeMs,target,attempt};
+    setResult(r);setRounds(prev=>[r,...prev.slice(0,11)]);
+    setPhase('result');
+    if(cfg.soundEnabled){if(score>=95)AudioEngine.perfect();else if(score>=70)AudioEngine.good();else{AudioEngine.fail();setShowCorrection(true)}}
+    else if(score<55)setShowCorrection(true);
+  };
+  const next=()=>{setTarget(randomTarget(difficulty));setAttempt({h:180,s:50,l:50});setPhase('play');setResult(null);startRef.current=Date.now()};
+  const changeDifficulty=d=>{setDifficulty(d);setTarget(randomTarget(d));setAttempt({h:180,s:50,l:50});setPhase('play');setResult(null);startRef.current=Date.now()};
+
+  const[layoutRef,{width:layoutW}]=useContainerSize();
+  const isTwoCol=layoutW>=500;
+  const wheelColW=isTwoCol?Math.round(Math.min(300,layoutW*.44)):undefined;
+
+  return<div ref={layoutRef} style={{animation:'fadeIn .25s ease'}}>
+    <CorrectionOverlay target={target} attempt={attempt} visible={showCorrection} onDismiss={()=>setShowCorrection(false)} C={C}/>
+    <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center',marginBottom:20}}>
+      <div style={{display:'flex',gap:5}}>
+        {['novice','medium','hard','master'].map(d=>(
+          <Btn key={d} onClick={()=>changeDifficulty(d)} variant={difficulty===d?'primary':'ghost'} small>{d}</Btn>
+        ))}
+      </div>
+      {streak>=2&&<Badge color="#fff" bg="linear-gradient(90deg,#ff6600,#ff3300)">🔥 {streak} STREAK</Badge>}
+    </div>
+    <div style={{display:'flex',flexDirection:isTwoCol?'row':'column',gap:isTwoCol?'clamp(16px,3vw,28px)':14,alignItems:'flex-start'}}>
+      <div style={{flexShrink:0}}>
+        <WheelColumn color={attempt} onChange={handleChange} locked={phase==='result'} target={target} attempt={attempt} phase={phase} showTarget={false} targetColor={null} wheelSize={wheelColW}/>
+      </div>
+      <div style={{flex:1,minWidth:180,display:'flex',flexDirection:'column',gap:14}}>
+        {phase==='play'?(
+          <>
+            <Card><AccuracyBar score={liveScore} deltaE={liveDeltaE} C={C}/></Card>
+            {cfg.precisionMode&&<PrecisionPanel color={attempt} targetColor={target} C={C}/>}
+            <Btn onClick={submit} variant="primary">SUBMIT → [Enter]</Btn>
+            <Btn onClick={()=>setShowExpert(x=>!x)} variant="ghost" small>{showExpert?'▲ Hide':'▼ Expert'} [Tab]</Btn>
+            {showExpert&&<ExpertPanel targetLab={tLab} attemptLab={aLab} deltaE={liveDeltaE} C={C}/>}
+          </>
+        ):(
+          <>
+            <div style={{display:'flex',justifyContent:'center'}}><ScoreRing score={result.score} deltaE={result.deltaE} show/></div>
+            <Card style={{fontFamily:'monospace',fontSize:11,lineHeight:1.9}}>
+              <Tag label="TARGET" value={`H${Math.round(target.h)}° S${Math.round(target.s)}% L${Math.round(target.l)}%`} C={C}/>
+              <Tag label="HEX" value={rgbToHex(tRgb)} C={C}/>
+              <Tag label="TIME" value={`${(result.timeMs/1000).toFixed(1)}s`} C={C}/>
+              <Tag label="DIFFICULTY" value={difficulty.toUpperCase()} C={C}/>
+            </Card>
+            <ExpertPanel targetLab={tLab} attemptLab={aLab} deltaE={result.deltaE} C={C}/>
+            <Btn onClick={next} variant="secondary">NEXT COLOR → [N]</Btn>
+            <Card>
+              <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:10}}>LAST 3 RATINGS</div>
+              <RatingHistoryStrip limit={3}/>
+            </Card>
+          </>
+        )}
+        {history.length>0&&<Card><HistoryTimeline history={history} onSelect={c=>setAttempt(c)} onExport={fmt=>exportPalette(history,fmt)} C={C}/></Card>}
+      </div>
+    </div>
+    {rounds.length>0&&<div style={{marginTop:24,borderTop:`1px solid ${C.border}`,paddingTop:16}}>
+      <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:10}}>ROUND HISTORY</div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+        {rounds.map((r,i)=>{const sl=scoreLabel(r.score);return<div key={i} title={`Score: ${r.score}`} style={{width:36,height:36,borderRadius:8,background:`conic-gradient(${sl.color} ${r.score*3.6}deg,${C.border} 0)`,display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{fontSize:9,color:'#fff',fontWeight:700}}>{r.score}</span></div>})}
+      </div>
+    </div>}
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SPRINT MODE — Random Color Harmony Challenges
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Challenge Generator ──────────────────────────────────────────
+const SPRINT_TYPES = ['complementary','analogous','triadic','tetradic','pick_harmony','find_closest','odd_one_out'];
+
+function genChallenge() {
+  const type = SPRINT_TYPES[Math.floor(Math.random() * SPRINT_TYPES.length)];
+  const baseHue = Math.floor(Math.random() * 360);
+  const hsl = (h, s=80, l=55) => ({ h: ((h%360)+360)%360, s, l });
+  const toSwatch = (h,s=80,l=55) => `hsl(${((h%360)+360)%360},${s}%,${l}%)`;
+
+  if (type === 'complementary') {
+    const correct = (baseHue + 180) % 360;
+    const wrong1  = (baseHue + 90)  % 360;
+    const wrong2  = (baseHue + 270) % 360;
+    const wrong3  = (baseHue + 40)  % 360;
+    const opts = shuffle([correct, wrong1, wrong2, wrong3]);
+    return { type, icon:'⚡', title:'Find the Complementary Color',
+      prompt:`Which color is the complement of`, baseColor: toSwatch(baseHue),
+      baseHue, options: opts.map(h=>toSwatch(h)), correctIndex: opts.indexOf(correct) };
+  }
+  if (type === 'analogous') {
+    const correct = (baseHue + 30) % 360;
+    const wrong1  = (baseHue + 90) % 360;
+    const wrong2  = (baseHue + 180)% 360;
+    const wrong3  = (baseHue + 150)% 360;
+    const opts = shuffle([correct, wrong1, wrong2, wrong3]);
+    return { type, icon:'🔗', title:'Find an Analogous Color',
+      prompt:`Which color is analogous to (+30°)`, baseColor: toSwatch(baseHue),
+      baseHue, options: opts.map(h=>toSwatch(h)), correctIndex: opts.indexOf(correct) };
+  }
+  if (type === 'triadic') {
+    const correct = (baseHue + 120) % 360;
+    const wrong1  = (baseHue + 60)  % 360;
+    const wrong2  = (baseHue + 180) % 360;
+    const wrong3  = (baseHue + 90)  % 360;
+    const opts = shuffle([correct, wrong1, wrong2, wrong3]);
+    return { type, icon:'△', title:'Find a Triadic Color',
+      prompt:`Which color forms a triadic (+120°) with`, baseColor: toSwatch(baseHue),
+      baseHue, options: opts.map(h=>toSwatch(h)), correctIndex: opts.indexOf(correct) };
+  }
+  if (type === 'tetradic') {
+    const correct = (baseHue + 90)  % 360;
+    const wrong1  = (baseHue + 120) % 360;
+    const wrong2  = (baseHue + 45)  % 360;
+    const wrong3  = (baseHue + 180) % 360;
+    const opts = shuffle([correct, wrong1, wrong2, wrong3]);
+    return { type, icon:'□', title:'Find a Tetradic Color',
+      prompt:`Which color is 90° away (tetradic) from`, baseColor: toSwatch(baseHue),
+      baseHue, options: opts.map(h=>toSwatch(h)), correctIndex: opts.indexOf(correct) };
+  }
+  if (type === 'pick_harmony') {
+    // Show 4 swatches, one is harmonious (triadic), rest are random
+    const correct = (baseHue + 120) % 360;
+    const decoys = [
+      (baseHue + 47) % 360, (baseHue + 193) % 360, (baseHue + 71) % 360
+    ];
+    const opts = shuffle([correct, ...decoys]);
+    return { type, icon:'🎨', title:'Pick the Harmonious Color',
+      prompt:`Which swatch is harmonically related to`, baseColor: toSwatch(baseHue),
+      baseHue, options: opts.map(h=>toSwatch(h)), correctIndex: opts.indexOf(correct) };
+  }
+  if (type === 'find_closest') {
+    const targetHue = (baseHue + 15) % 360;
+    const close     = (baseHue + 10) % 360;
+    const far1      = (baseHue + 90) % 360;
+    const far2      = (baseHue + 180)% 360;
+    const opts = shuffle([close, far1, far2, (baseHue + 150) % 360]);
+    return { type, icon:'🎯', title:'Find the Closest Color',
+      prompt:`Which color is closest in hue to`, baseColor: toSwatch(targetHue, 75, 55),
+      baseHue: targetHue, options: opts.map(h=>toSwatch(h)), correctIndex: opts.indexOf(close) };
+  }
+  // odd_one_out: 3 colors belong to a triad, 1 is an outsider
+  if (type === 'odd_one_out') {
+    const triad = [(baseHue+120)%360,(baseHue+240)%360];
+    const outsider = (baseHue + 55) % 360;
+    const all = shuffle([baseHue, triad[0], triad[1], outsider]);
+    return { type, icon:'🔍', title:'Spot the Odd One Out',
+      prompt:`Three swatches form a triadic harmony. Which one doesn't belong?`,
+      baseColor: null, baseHue,
+      options: all.map(h=>toSwatch(h)), correctIndex: all.indexOf(outsider) };
+  }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+// ── Timer Hook ───────────────────────────────────────────────────
+function useSprintTimer(active, onExpire) {
+  const [timeLeft, setTimeLeft] = useState(10);
+  const ref = useRef(null);
+  const startedAt = useRef(Date.now());
+
+  useEffect(() => {
+    if (!active) { clearInterval(ref.current); return; }
+    setTimeLeft(10);
+    startedAt.current = Date.now();
+    ref.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) { clearInterval(ref.current); onExpire(); return 0; }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(ref.current);
+  }, [active]);
+
+  const elapsed = () => ((Date.now() - startedAt.current) / 1000).toFixed(1);
+  const reset = () => { clearInterval(ref.current); setTimeLeft(10); };
+  return { timeLeft, elapsed, reset };
+}
+
+// ── Sprint Card ──────────────────────────────────────────────────
+function SprintCard({ challenge, onAnswer, C }) {
+  const [selected, setSelected] = useState(null);
+  const [revealed, setRevealed] = useState(false);
+
+  const choose = (idx) => {
+    if (revealed) return;
+    setSelected(idx);
+    setRevealed(true);
+    setTimeout(() => onAnswer(idx === challenge.correctIndex, idx), 680);
+  };
+
+  const borderFor = (idx) => {
+    if (!revealed) return `1px solid ${C.border}`;
+    if (idx === challenge.correctIndex) return `2px solid ${C.success}`;
+    if (idx === selected) return `2px solid ${C.error}`;
+    return `1px solid ${C.border}`;
+  };
+  const bgFor = (idx) => {
+    if (!revealed) return C.bgCard;
+    if (idx === challenge.correctIndex) return `${C.success}18`;
+    if (idx === selected) return `${C.error}18`;
+    return C.bgCard;
+  };
+
+  return (
+    <div style={{animation:'fadeIn .2s ease'}}>
+      {/* Prompt */}
+      <div style={{background:C.bgSecondary,borderRadius:14,padding:'18px 20px',marginBottom:16,border:`1px solid ${C.border}`}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:challenge.baseColor?14:0}}>
+          <span style={{fontSize:22}}>{challenge.icon}</span>
+          <div>
+            <div style={{fontSize:11,letterSpacing:'.12em',color:C.accent,fontWeight:700,marginBottom:2}}>{challenge.title}</div>
+            <div style={{fontSize:13,color:C.textSecondary,lineHeight:1.5}}>{challenge.prompt}{challenge.baseColor?' this:':''}</div>
+          </div>
+        </div>
+        {challenge.baseColor && (
+          <div style={{display:'flex',alignItems:'center',gap:12,marginTop:8}}>
+            <div style={{width:52,height:52,borderRadius:12,background:challenge.baseColor,boxShadow:`0 4px 16px ${challenge.baseColor}66`,flexShrink:0}}/>
+            <div style={{fontFamily:'monospace',fontSize:12,color:C.textMuted}}>Base color</div>
+          </div>
+        )}
+      </div>
+
+      {/* Options Grid */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        {challenge.options.map((opt, idx) => (
+          <button key={idx} onClick={() => choose(idx)}
+            style={{background:bgFor(idx),border:borderFor(idx),borderRadius:12,padding:'14px 12px',cursor:revealed?'default':'pointer',
+              transition:'all .15s',display:'flex',flexDirection:'column',alignItems:'center',gap:10,
+              boxShadow:!revealed&&selected===null?`0 2px 8px rgba(0,0,0,.25)`:'none'}}>
+            <div style={{width:56,height:56,borderRadius:10,background:opt,boxShadow:`0 3px 12px ${opt}55`,flexShrink:0}}/>
+            <div style={{fontSize:11,fontFamily:'monospace',color:C.textMuted}}>
+              {revealed && idx === challenge.correctIndex && <span style={{color:C.success,fontWeight:700}}>✓ Correct</span>}
+              {revealed && idx === selected && idx !== challenge.correctIndex && <span style={{color:C.error,fontWeight:700}}>✗ Wrong</span>}
+              {!revealed && <span>Option {idx+1}</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main SprintMode ──────────────────────────────────────────────
+function SprintMode() {
+  const { C } = useTheme();
+  const { s: cfg } = useSettings();
+  const [phase, setPhase]       = useState('ready');
+  const [challenge, setChallenge] = useState(null);
+  const [history, setHistory]   = useState([]);   // {correct, time, type}
+  const [score, setScore]       = useState(0);
+  const [timerKey, setTimerKey] = useState(0);    // increment to restart timer
+  const [canEnd, setCanEnd]     = useState(false);
+  const challengeRef = useRef(null);
+
+  const MIN_CHALLENGES = 5;
+
+  const nextChallenge = useCallback(() => {
+    const c = genChallenge();
+    setChallenge(c);
+    challengeRef.current = c;
+    setTimerKey(k => k + 1);
+  }, []);
+
+  const handleExpire = useCallback(() => {
+    // timeout = incorrect, 0 time bonus
+    const elapsed = 10;
+    setHistory(h => [...h, { correct: false, time: elapsed, type: challengeRef.current?.type }]);
+    setScore(s => s - 5);
+    if (cfg.soundEnabled) AudioEngine.fail?.();
+    setTimeout(nextChallenge, 400);
+  }, [nextChallenge, cfg.soundEnabled]);
+
+  const { timeLeft, elapsed } = useSprintTimer(phase === 'playing' && !!challenge && timerKey > 0, handleExpire);
+
+  // Update canEnd when history grows
+  useEffect(() => {
+    if (history.length >= MIN_CHALLENGES) setCanEnd(true);
+  }, [history.length]);
+
+  const handleAnswer = useCallback((correct, idx) => {
+    const t = parseFloat(elapsed());
+    setHistory(h => [...h, { correct, time: t, type: challengeRef.current?.type }]);
+    setScore(s => correct ? s + 10 : s - 5);
+    if (cfg.soundEnabled) correct ? AudioEngine.good() : AudioEngine.fail?.();
+    setTimeout(nextChallenge, 700);
+  }, [elapsed, nextChallenge, cfg.soundEnabled]);
+
+  const startSprint = () => {
+    setPhase('playing');
+    setHistory([]);
+    setScore(0);
+    setCanEnd(false);
+    const c = genChallenge();
+    setChallenge(c);
+    challengeRef.current = c;
+    setTimerKey(1);
+  };
+
+  const endSprint = () => setPhase('results');
+  const restart  = () => { setPhase('ready'); setChallenge(null); setHistory([]); setScore(0); setTimerKey(0); setCanEnd(false); };
+
+  // ── READY screen ────────────────────────────────────────────────
+  if (phase === 'ready') return (
+    <div style={{animation:'fadeIn .25s ease', maxWidth:520, margin:'0 auto'}}>
+      <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:20,padding:'40px 32px',textAlign:'center'}}>
+        <div style={{fontSize:64,marginBottom:12}}>⚡</div>
+        <h2 style={{fontSize:24,fontWeight:900,color:C.textPrimary,marginBottom:8,letterSpacing:'-.5px'}}>Color Harmony Sprint</h2>
+        <p style={{color:C.textSecondary,fontSize:14,lineHeight:1.7,maxWidth:340,margin:'0 auto 28px'}}>
+          Answer random color challenges before the 10-second timer runs out.<br/>Complete at least 5 rounds to see your results.
+        </p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:28,textAlign:'center'}}>
+          {[['⚡','Complementary'],['🔗','Analogous'],['△','Triadic'],['□','Tetradic'],['🎯','Closest'],['🔍','Odd One Out']].map(([icon,name])=>(
+            <div key={name} style={{background:C.bgSecondary,borderRadius:10,padding:'10px 6px',border:`1px solid ${C.border}`}}>
+              <div style={{fontSize:20,marginBottom:4}}>{icon}</div>
+              <div style={{fontSize:10,color:C.textMuted,letterSpacing:'.05em'}}>{name}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'center'}}>
+          <Btn onClick={startSprint} variant="primary" style={{minWidth:200,padding:'14px 24px',fontSize:15,fontWeight:700}}>START SPRINT</Btn>
+          <div style={{fontSize:11,color:C.textMuted}}>+10 correct · −5 incorrect · 10s per challenge</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── RESULTS screen ───────────────────────────────────────────────
+  if (phase === 'results') {
+    const total    = history.length;
+    const correct  = history.filter(h=>h.correct).length;
+    const accuracy = total ? Math.round((correct/total)*100) : 0;
+    const avgTime  = total ? (history.reduce((s,h)=>s+h.time,0)/total).toFixed(1) : '–';
+    const stars    = scoreToStars(accuracy);
+    try { const prev = parseInt(localStorage.getItem('chromix-sprint-best')||'0'); if(score>prev) localStorage.setItem('chromix-sprint-best',String(score)); } catch {}
+
+    return (
+      <div style={{animation:'slideUp .3s ease',maxWidth:520,margin:'0 auto'}}>
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:20,padding:'36px 28px',textAlign:'center'}}>
+          <div style={{fontSize:52,marginBottom:8}}>🏆</div>
+          <div style={{fontSize:52,fontWeight:900,color:C.textPrimary,fontFamily:'monospace',lineHeight:1}}>{score}</div>
+          <div style={{fontSize:10,letterSpacing:'.15em',color:C.textMuted,marginTop:4,marginBottom:18}}>FINAL SCORE</div>
+
+          {/* Stars */}
+          <div style={{display:'flex',justifyContent:'center',gap:6,marginBottom:24}}>
+            {Array.from({length:5},(_,i)=>(
+              <span key={i} style={{fontSize:34,color:i<stars?'#ffd700':'rgba(255,255,255,.12)',filter:i<stars?'drop-shadow(0 0 7px #ffd700)':'none',animation:i<stars?`starPop .35s ${i*.1}s ease both`:'none',display:'inline-block'}}>{i<stars?'★':'☆'}</span>
+            ))}
+          </div>
+
+          {/* Stats grid */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:24}}>
+            {[
+              ['🎯','Accuracy',`${accuracy}%`],
+              ['📊','Challenges',`${total}`],
+              ['✅','Correct',`${correct} / ${total}`],
+              ['⏱','Avg Time',`${avgTime}s`],
+            ].map(([icon,label,val])=>(
+              <div key={label} style={{background:C.bgSecondary,borderRadius:12,padding:'14px 10px',border:`1px solid ${C.border}`}}>
+                <div style={{fontSize:22,marginBottom:4}}>{icon}</div>
+                <div style={{fontSize:20,fontWeight:800,color:C.textPrimary,fontFamily:'monospace'}}>{val}</div>
+                <div style={{fontSize:10,color:C.textMuted,letterSpacing:'.1em',marginTop:2}}>{label.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Type breakdown */}
+          <div style={{marginBottom:24,textAlign:'left'}}>
+            <div style={{fontSize:11,color:C.textMuted,letterSpacing:'.1em',marginBottom:8,paddingLeft:2}}>CHALLENGE BREAKDOWN</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {SPRINT_TYPES.map(type=>{
+                const all=history.filter(h=>h.type===type);
+                if(!all.length) return null;
+                const ok=all.filter(h=>h.correct).length;
+                const typeIcons={complementary:'⚡',analogous:'🔗',triadic:'△',tetradic:'□',pick_harmony:'🎨',find_closest:'🎯',odd_one_out:'🔍'};
+                const typeNames={complementary:'Complementary',analogous:'Analogous',triadic:'Triadic',tetradic:'Tetradic',pick_harmony:'Pick Harmony',find_closest:'Find Closest',odd_one_out:'Odd One Out'};
+                return(
+                  <div key={type} style={{display:'flex',alignItems:'center',gap:8,background:C.bgSecondary,borderRadius:8,padding:'8px 12px',border:`1px solid ${C.border}`}}>
+                    <span style={{fontSize:16}}>{typeIcons[type]}</span>
+                    <span style={{flex:1,fontSize:12,color:C.textSecondary}}>{typeNames[type]}</span>
+                    <span style={{fontFamily:'monospace',fontSize:12,color:ok===all.length?C.success:ok>0?C.warning:C.error,fontWeight:700}}>{ok}/{all.length}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
+            <Btn onClick={restart} variant="primary" style={{minWidth:150,padding:'12px 20px'}}>Play Again</Btn>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PLAYING screen ───────────────────────────────────────────────
+  const tc = timeLeft <= 3 ? C.error : timeLeft <= 6 ? C.warning : C.accent;
+  const correct = history.filter(h=>h.correct).length;
+  const accuracy = history.length ? Math.round((correct/history.length)*100) : 100;
+
+  return (
+    <div style={{maxWidth:520,margin:'0 auto',animation:'fadeIn .2s ease'}}>
+      {/* HUD */}
+      <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,padding:'12px 16px',marginBottom:14,display:'flex',alignItems:'center',gap:12}}>
+        {/* Timer ring */}
+        <div style={{position:'relative',width:52,height:52,flexShrink:0}}>
+          <svg width="52" height="52" style={{transform:'rotate(-90deg)'}}>
+            <circle cx="26" cy="26" r="22" fill="none" stroke={C.border} strokeWidth="4"/>
+            <circle cx="26" cy="26" r="22" fill="none" stroke={tc} strokeWidth="4"
+              strokeDasharray={`${2*Math.PI*22}`}
+              strokeDashoffset={`${2*Math.PI*22*(1-timeLeft/10)}`}
+              style={{transition:'stroke-dashoffset .9s linear,stroke .3s'}}/>
+          </svg>
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'monospace',fontSize:15,fontWeight:800,color:tc}}>{timeLeft}</div>
+        </div>
+        {/* Score + progress */}
+        <div style={{flex:1}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+            <span style={{fontSize:11,color:C.textMuted,letterSpacing:'.1em'}}>CHALLENGE {history.length+1}</span>
+            <span style={{fontFamily:'monospace',fontSize:16,fontWeight:800,color:C.accent}}>
+              {score >= 0 ? '+' : ''}{score} pts
+            </span>
+          </div>
+          <div style={{height:5,background:C.border,borderRadius:3,overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${accuracy}%`,background:`linear-gradient(90deg,${C.accent},${C.accentAlt})`,borderRadius:3,transition:'width .4s'}}/>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:3}}>
+            <span style={{fontSize:10,color:C.textMuted}}>{correct}/{history.length} correct</span>
+            <span style={{fontSize:10,color:C.textMuted}}>{accuracy}% accuracy</span>
+          </div>
+        </div>
+        {/* End button (only after MIN_CHALLENGES) */}
+        {canEnd && (
+          <Btn onClick={endSprint} variant="ghost" small style={{flexShrink:0,fontSize:11,padding:'6px 10px',opacity:.6}}>End →</Btn>
+        )}
+      </div>
+
+      {/* Challenge card */}
+      {challenge && (
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:16,padding:'18px 16px'}}>
+          <SprintCard key={timerKey} challenge={challenge} onAnswer={handleAnswer} C={C}/>
+        </div>
+      )}
+
+      {/* Min challenge hint */}
+      {!canEnd && history.length > 0 && (
+        <div style={{textAlign:'center',marginTop:10,fontSize:11,color:C.textMuted}}>
+          {MIN_CHALLENGES - history.length} more to unlock results
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LEVEL MODE — C1 Harmony System with HueRingWheel
+// ═══════════════════════════════════════════════════════════════════
+
+// Level complete modal
+function LevelCompleteModal({lv,avg,taskScores,onNext,onReplay,onBack,C}){
+  const stars=scoreToStars(avg);
+  const nextLv=HARMONY_LEVELS.find(l=>l.id===lv.id+1);
+  const nextUnlocked=nextLv&&HarmonyStore.isUnlocked(nextLv.id);
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.85)',backdropFilter:'blur(10px)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',animation:'fadeIn .2s ease'}}>
+      <div style={{background:C.bgCard,border:`1px solid ${C.borderLight}`,borderRadius:20,padding:44,textAlign:'center',maxWidth:360,width:'90%',animation:'lcPop .35s cubic-bezier(.34,1.56,.64,1)'}}>
+        <div style={{fontSize:62,marginBottom:10}}>🏆</div>
+        <div style={{fontSize:26,fontWeight:900,letterSpacing:'-.5px',background:`linear-gradient(90deg,${C.accent},${C.accentAlt})`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',marginBottom:18}}>
+          Level Complete!
+        </div>
+        <div style={{fontFamily:'monospace',fontSize:54,fontWeight:900,color:C.textPrimary,lineHeight:1}}>{avg}%</div>
+        <div style={{fontSize:10,letterSpacing:'.15em',color:C.textMuted,marginBottom:20,marginTop:4}}>AVERAGE SCORE</div>
+        <div style={{display:'flex',justifyContent:'center',gap:5,marginBottom:22}}>
+          {Array.from({length:5},(_,i)=>(
+            <span key={i} style={{fontSize:34,color:i<stars?'#ffd700':'rgba(255,255,255,.12)',filter:i<stars?'drop-shadow(0 0 7px #ffd700)':'none',animation:i<stars?`starPop .35s ${i*0.1}s ease both`:'none',display:'inline-block'}}>{i<stars?'★':'☆'}</span>
+          ))}
+        </div>
+        {avg>=80&&nextLv&&<div style={{background:`linear-gradient(135deg,${C.accent}22,${C.accentAlt}22)`,border:`1px solid ${C.accent}44`,borderRadius:12,padding:12,marginBottom:20,fontSize:13,color:C.accent}}>
+          🎉 {nextLv.name} Unlocked!
+        </div>}
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {nextLv&&avg>=80&&<Btn onClick={onNext} variant="primary" style={{width:'100%',padding:14}}>CONTINUE →</Btn>}
+          <Btn onClick={onReplay} variant="secondary" style={{width:'100%',padding:14}}>REPLAY LEVEL</Btn>
+          <Btn onClick={onBack} variant="ghost" style={{width:'100%',padding:14}}>← Back to Levels</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Saturation slider
+function SatSlider({sat,setSat,baseHue,C}){
+  return(
+    <div style={{width:'100%',maxWidth:320}}>
+      <div style={{fontSize:9,letterSpacing:'.13em',color:C.textMuted,marginBottom:7}}>YOUR SATURATION</div>
+      <div style={{position:'relative',height:22,borderRadius:11,border:`1px solid ${C.borderLight}`,overflow:'hidden',cursor:'pointer',
+        background:`linear-gradient(to right,hsl(${baseHue},0%,52%),hsl(${baseHue},100%,52%))`}}
+        onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setSat(Math.round(Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100))))}}>
+        <div style={{position:'absolute',top:'50%',left:`${sat}%`,transform:'translate(-50%,-50%)',width:24,height:24,borderRadius:'50%',background:'#fff',border:'3px solid rgba(255,255,255,.9)',boxShadow:'0 2px 10px rgba(0,0,0,.5)',pointerEvents:'none'}}/>
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:4,fontSize:10,fontFamily:'monospace',color:C.textMuted}}>
+        <span>0%</span><span style={{color:C.accent,fontWeight:700}}>{sat}%</span><span>100%</span>
+      </div>
+    </div>
+  );
+}
+
+function LevelMode(){
+  const{C}=useTheme();
+  const{s:cfg}=useSettings();
+  const[selectedLevel,setSelectedLevel]=useState(null);
+  const[taskIdx,setTaskIdx]=useState(0);
+  const[phase,setPhase]=useState('playing'); // playing | submitted
+  const[baseHue,setBaseHue]=useState(0);
+  const[satTarget,setSatTarget]=useState(50);
+  const[playerSat,setPlayerSat]=useState(50);
+  const[taskScores,setTaskScores]=useState([]);
+  const[markers,setMarkers]=useState([]);
+  const[feedback,setFeedback]=useState(null);
+  const[showModal,setShowModal]=useState(false);
+  const[modalData,setModalData]=useState(null);
+  const[,forceUpdate]=useState(0);
+
+  // Build markers for current task
+  const initTask=(lv,tIdx,bHue,sTarget)=>{
+    const task=lv.tasks[tIdx];
+    const sat=isSatMode(task.type);
+    const startHues=[];
+    for(let i=0;i<task.markerCount;i++)startHues.push(HarmonyMath.norm(bHue+180+i*20));
+    const newMarkers=[{hue:bHue,isBase:true,draggable:false,label:`BASE ${Math.round(bHue)}°`}];
+    startHues.forEach(h=>newMarkers.push({hue:h,draggable:true,label:`${Math.round(h)}°`}));
+    setMarkers(newMarkers);
+    setPhase('playing');
+    setFeedback(null);
+    setPlayerSat(50);
+  };
+
+  const startLevel=lv=>{
+    const bHue=Math.random()*360;
+    const sTarget=15+Math.random()*70;
+    setSelectedLevel(lv);setTaskIdx(0);setTaskScores([]);
+    setBaseHue(bHue);setSatTarget(sTarget);
+    setShowModal(false);
+    initTask(lv,0,bHue,sTarget);
+  };
+
+  const calcScore=useCallback(()=>{
+    if(!selectedLevel)return 0;
+    const task=selectedLevel.tasks[taskIdx];
+    if(isSatMode(task.type)){
+      if(task.type==='sat_max')   return HarmonyMath.satScore(playerSat,100,30);
+      if(task.type==='sat_pastel')return HarmonyMath.satScore(playerSat,15,30);
+      if(task.type==='sat_match') return HarmonyMath.satScore(playerSat,Math.round(satTarget),30);
+      return 0;
+    }
+    const targets=getHarmonyTargets(task.type,baseHue);
+    const playerHues=markers.filter(m=>m.draggable).map(m=>m.hue);
+    if(!playerHues.length||!targets.length)return 0;
+    let total=0;
+    const count=Math.min(playerHues.length,targets.length);
+    for(let i=0;i<count;i++)total+=HarmonyMath.hueScore(playerHues[i],targets[i].hue,targets[i].tol||30);
+    return Math.round(total/count);
+  },[selectedLevel,taskIdx,markers,playerSat,satTarget,baseHue]);
+
+  const liveScore=useMemo(()=>phase==='playing'?calcScore():0,[calcScore,phase]);
+
+  const handleMarkerMove=(idx,hue)=>{
+    setMarkers(prev=>{const n=[...prev];n[idx]={...n[idx],hue,label:`${Math.round(hue)}°`};return n});
+  };
+
+  const submit=()=>{
+    if(phase!=='playing')return;
+    const score=calcScore();
+    RatingStore.add(score,'Levels');
+    const newScores=[...taskScores,score];
+    setTaskScores(newScores);
+    setPhase('submitted');
+    const lbl=scoreToStars(score);
+    const fbText=score>=95?'PERFECT!'  :score>=85?'EXCELLENT':score>=70?'GOOD':score>=50?'CLOSE':'TRY AGAIN';
+    setFeedback({score,stars:lbl,text:fbText});
+    if(cfg.soundEnabled){if(score>=95)AudioEngine.perfect();else if(score>=70)AudioEngine.good();else AudioEngine.fail()}
+
+    const isLast=taskIdx===selectedLevel.tasks.length-1;
+    if(isLast){
+      const avg=HarmonyMath.avg(newScores);
+      HarmonyStore.record(selectedLevel.id,avg);
+      setTimeout(()=>{setModalData({lv:selectedLevel,avg,scores:newScores});setShowModal(true)},1200);
+    }
+  };
+
+  const nextTask=()=>{
+    if(!selectedLevel)return;
+    if(taskIdx<selectedLevel.tasks.length-1){
+      const next=taskIdx+1;
+      const bHue=Math.random()*360;
+      const sTarget=15+Math.random()*70;
+      setTaskIdx(next);setBaseHue(bHue);setSatTarget(sTarget);
+      initTask(selectedLevel,next,bHue,sTarget);
+    }
+  };
+
+  // Keyboard: arrows nudge active marker
+  useEffect(()=>{
+    const handler=e=>{
+      if(!selectedLevel)return;
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();if(phase==='playing')submit();else nextTask();return}
+      if(e.key==='n'||e.key==='N'){if(phase==='submitted')nextTask();return}
+      if(e.key==='r'||e.key==='R'){startLevel(selectedLevel);return}
+      if(e.key==='ArrowLeft'){e.preventDefault();setMarkers(prev=>{const n=[...prev];const draggables=n.map((m,i)=>({m,i})).filter(x=>x.m.draggable);if(!draggables.length)return n;const idx=draggables[0].i;n[idx]={...n[idx],hue:HarmonyMath.norm(n[idx].hue-2),label:`${Math.round(HarmonyMath.norm(n[idx].hue-2))}°`};return n})}
+      if(e.key==='ArrowRight'){e.preventDefault();setMarkers(prev=>{const n=[...prev];const draggables=n.map((m,i)=>({m,i})).filter(x=>x.m.draggable);if(!draggables.length)return n;const idx=draggables[0].i;n[idx]={...n[idx],hue:HarmonyMath.norm(n[idx].hue+2),label:`${Math.round(HarmonyMath.norm(n[idx].hue+2))}°`};return n})}
+    };
+    window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler);
+  },[selectedLevel,phase,taskIdx]);
+
+  // ── Level select grid ──
+  if(!selectedLevel){
+    return<div style={{animation:'fadeIn .25s ease'}}>
+      <h2 style={{fontSize:22,fontWeight:800,marginBottom:6,color:C.textPrimary}}>Harmony Levels</h2>
+      <p style={{color:C.textSecondary,fontSize:13,lineHeight:1.7,maxWidth:520,marginBottom:24}}>
+        Master color harmony relationships. Each level unlocks when you score ≥ 80%. Drag markers to the correct harmonic positions.
+      </p>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))',gap:13}}>
+        {HARMONY_LEVELS.map(lv=>{
+          const unlocked=HarmonyStore.isUnlocked(lv.id);
+          const completed=HarmonyStore.isCompleted(lv.id);
+          const best=HarmonyStore.getBest(lv.id);
+          return<div key={lv.id} onClick={unlocked?()=>startLevel(lv):undefined}
+            style={{background:C.bgCard,border:`1px solid ${completed?lv.color+'55':C.border}`,borderRadius:14,padding:20,cursor:unlocked?'pointer':'default',opacity:unlocked?1:.45,transition:'transform .15s,border-color .2s,box-shadow .15s',position:'relative',overflow:'hidden'}}
+            onMouseEnter={e=>{if(unlocked){e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,.3)'}}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+            <div style={{fontSize:30,marginBottom:10}}>{lv.icon}</div>
+            <div style={{fontSize:9,letterSpacing:'.15em',color:C.textMuted,marginBottom:5}}>LEVEL {lv.id}</div>
+            <div style={{fontSize:16,fontWeight:700,marginBottom:5,color:C.textPrimary}}>{lv.name}</div>
+            <div style={{fontSize:12,color:C.textSecondary,lineHeight:1.6,marginBottom:12}}>{lv.desc}</div>
+            <div style={{height:4,background:C.bgSecondary,borderRadius:2,overflow:'hidden',marginBottom:6}}>
+              <div style={{height:'100%',width:`${best}%`,background:lv.color,borderRadius:2,transition:'width .4s ease'}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:10,fontFamily:'monospace'}}>
+              <span style={{color:C.textMuted}}>Best: {best}%</span>
+              <span style={{color:C.textMuted}}>Need: 80%</span>
+            </div>
+            {!unlocked&&<div style={{position:'absolute',top:12,right:12,fontSize:10,background:'rgba(255,255,255,.07)',borderRadius:6,padding:'2px 7px',color:C.textMuted}}>🔒 Locked</div>}
+            {completed&&<div style={{position:'absolute',top:12,right:12,fontSize:10,background:`${lv.color}22`,borderRadius:6,padding:'2px 7px',color:lv.color}}>✓ Done</div>}
+            {/* Star display for best */}
+            {best>0&&<div style={{marginTop:6}}>
+              {Array.from({length:5},(_,i)=>(
+                <span key={i} style={{fontSize:12,color:i<scoreToStars(best)?'#ffd700':'rgba(255,255,255,.12)',filter:i<scoreToStars(best)?'drop-shadow(0 0 3px #ffd700)':'none'}}>★</span>
+              ))}
+            </div>}
+          </div>;
+        })}
+      </div>
+      <Card style={{marginTop:24}}>
+        <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:10}}>LAST 3 RATINGS</div>
+        <RatingHistoryStrip limit={3}/>
+      </Card>
+    </div>;
+  }
+
+  const task=selectedLevel.tasks[taskIdx];
+  const targets=getHarmonyTargets(task.type,baseHue);
+  const sat=isSatMode(task.type);
+  const overlay=sat?null:getOverlayMode(task.type);
+  const playerHues=markers.filter(m=>m.draggable).map(m=>m.hue);
+  const scoreColor=['#ff5533','#ff9944','#ffcc44','#88ee44','#3dffa0'][Math.min(4,Math.floor(liveScore/20))];
+
+  return<div style={{animation:'fadeIn .25s ease'}}>
+    {showModal&&modalData&&<LevelCompleteModal
+      lv={modalData.lv} avg={modalData.avg} taskScores={modalData.scores}
+      onNext={()=>{const n=HARMONY_LEVELS.find(l=>l.id===modalData.lv.id+1);setShowModal(false);if(n&&HarmonyStore.isUnlocked(n.id))startLevel(n);else setSelectedLevel(null)}}
+      onReplay={()=>{setShowModal(false);startLevel(selectedLevel)}}
+      onBack={()=>{setShowModal(false);setSelectedLevel(null)}}
+      C={C}
+    />}
+    <Btn onClick={()=>setSelectedLevel(null)} variant="ghost" small style={{marginBottom:16}}>← Back to Levels</Btn>
+    <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:22,alignItems:'start'}}>
+      {/* Wheel side */}
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+        <HueRingWheel baseHue={baseHue} markers={markers} onMarkerMove={handleMarkerMove} overlayMode={overlay} size={Math.min(300,cfg.wheelSize)}/>
+        {/* Swatches */}
+        <div style={{display:'flex',gap:8,width:'100%',maxWidth:300}}>
+          <div style={{flex:1,height:52,borderRadius:10,background:`hsl(${Math.round(baseHue)},88%,55%)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,letterSpacing:'.15em',color:'#fff'}}>
+            BASE {Math.round(baseHue)}°
+          </div>
+          {sat?(
+            <div style={{flex:1,height:52,borderRadius:10,background:`hsl(${Math.round(baseHue)},${playerSat}%,55%)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,letterSpacing:'.15em',color:'#fff'}}>
+              SAT {playerSat}%
+            </div>
+          ):(
+            playerHues.length>0&&<div style={{flex:1,height:52,borderRadius:10,background:`hsl(${Math.round(playerHues[0])},88%,55%)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,letterSpacing:'.15em',color:'#fff'}}>
+              YOURS {Math.round(playerHues[0])}°
+            </div>
+          )}
+        </div>
+        {sat&&<SatSlider sat={playerSat} setSat={setPlayerSat} baseHue={baseHue} C={C}/>}
+      </div>
+
+      {/* Side panel */}
+      <div style={{display:'flex',flexDirection:'column',gap:14,minWidth:0}}>
+        {/* Task card */}
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.accent}`,borderRadius:14,padding:18}}>
+          <div style={{fontSize:9,letterSpacing:'.15em',color:C.accent,fontWeight:700,marginBottom:5}}>{selectedLevel.icon} {selectedLevel.name.toUpperCase()} — LEVEL {selectedLevel.id}</div>
+          <div style={{fontSize:18,fontWeight:700,color:C.textPrimary,marginBottom:6}}>{task.title}</div>
+          <div style={{fontSize:13,color:C.textSecondary,lineHeight:1.68,marginBottom:12}}>{task.desc}</div>
+          {/* Progress pips */}
+          <div style={{display:'flex',gap:4}}>
+            {selectedLevel.tasks.map((_,i)=>(
+              <div key={i} style={{width:20,height:4,borderRadius:2,background:i<taskIdx?C.accent:i===taskIdx?C.accentAlt:C.border}}/>
+            ))}
+          </div>
+        </div>
+
+        {/* Live values */}
+        <Card>
+          <div style={{color:C.textMuted,fontSize:9,letterSpacing:'.15em',marginBottom:8}}>LIVE VALUES</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+            <div style={{background:C.bgSecondary,borderRadius:10,padding:'9px 11px'}}>
+              <div style={{fontSize:8,letterSpacing:'.13em',color:C.textMuted,marginBottom:3}}>BASE HUE</div>
+              <div style={{fontFamily:'monospace',fontSize:17,fontWeight:700,color:C.accent}}>{Math.round(baseHue)}°</div>
+            </div>
+            <div style={{background:C.bgSecondary,borderRadius:10,padding:'9px 11px'}}>
+              <div style={{fontSize:8,letterSpacing:'.13em',color:C.textMuted,marginBottom:3}}>{sat?'YOUR SAT':'YOUR HUE'}</div>
+              <div style={{fontFamily:'monospace',fontSize:17,fontWeight:700,color:C.accentAlt}}>
+                {sat?`${playerSat}%`:playerHues.length?`${Math.round(playerHues[0])}°`:'–'}
+              </div>
+            </div>
+          </div>
+          {/* Targets */}
+          {targets.length>0&&<div>
+            <div style={{fontSize:9,letterSpacing:'.13em',color:C.textMuted,marginBottom:5}}>TARGETS</div>
+            {targets.map(t=>(
+              <div key={t.label} style={{display:'inline-flex',alignItems:'center',gap:7,background:C.bgSecondary,borderRadius:7,padding:'4px 9px',fontSize:11,fontFamily:'monospace',marginRight:6,marginBottom:4}}>
+                <div style={{width:10,height:10,borderRadius:'50%',background:`hsl(${Math.round(t.hue)},88%,55%)`,flexShrink:0}}/>
+                {t.label} = {Math.round(t.hue)}°
+              </div>
+            ))}
+          </div>}
+          {sat&&<div style={{fontSize:11,fontFamily:'monospace',color:C.textSecondary,marginTop:4}}>
+            Target: {task.type==='sat_max'?'100% (vivid)':task.type==='sat_pastel'?'< 25% (pastel)':`${Math.round(satTarget)}%`}
+          </div>}
+        </Card>
+
+        {/* Score bar */}
+        <Card>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+            <span style={{fontSize:9,letterSpacing:'.13em',color:C.textMuted}}>ACCURACY</span>
+            <span style={{fontFamily:'monospace',fontSize:13,fontWeight:700,color:scoreColor}}>{phase==='playing'?liveScore:feedback?.score}%</span>
+          </div>
+          <div style={{height:8,background:C.bgSecondary,borderRadius:4,overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${phase==='playing'?liveScore:feedback?.score||0}%`,background:`linear-gradient(90deg,${scoreColor}88,${scoreColor})`,borderRadius:4,transition:'width .1s,background .2s'}}/>
+          </div>
+        </Card>
+
+        {/* Submit button */}
+        {phase==='playing'?(
+          <Btn onClick={submit} variant="primary" style={{padding:14,width:'100%'}}>SUBMIT ✓</Btn>
+        ):(
+          <Btn onClick={nextTask} variant="primary" style={{padding:14,width:'100%'}}>
+            {taskIdx<selectedLevel.tasks.length-1?'NEXT TASK →':'FINISHING...'}
+          </Btn>
+        )}
+
+        {/* Feedback */}
+        {feedback&&<div style={{padding:11,borderRadius:10,fontWeight:700,letterSpacing:'.05em',textAlign:'center',animation:'fadeIn .28s ease',
+          background:feedback.stars>=4?'rgba(61,255,160,.1)':feedback.stars===3?'rgba(124,111,255,.1)':feedback.stars===2?'rgba(255,204,68,.08)':'rgba(255,85,51,.08)',
+          color:feedback.stars>=4?C.success:feedback.stars===3?C.accent:feedback.stars===2?C.warning:C.error,
+          border:`1px solid ${feedback.stars>=4?C.success+'33':feedback.stars===3?C.accent+'33':feedback.stars===2?C.warning+'33':C.error+'33'}`}}>
+          <StarRating score={feedback.score} size="normal"/>
+        </div>}
+
+        {/* Last 3 ratings */}
+        <Card>
+          <div style={{color:C.textMuted,fontSize:9,letterSpacing:'.15em',marginBottom:10}}>LAST 3 RATINGS</div>
+          <RatingHistoryStrip limit={3}/>
+        </Card>
+
+        {/* Keyboard hints */}
+        <Card style={{padding:'12px 16px'}}>
+          <div style={{color:C.textMuted,fontSize:9,letterSpacing:'.15em',marginBottom:6}}>KEYBOARD</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+            {['Enter → Submit','N → Next','R → Restart','← → Nudge Hue'].map(k=>(
+              <span key={k} style={{background:C.bgSecondary,borderRadius:5,padding:'3px 8px',fontSize:10,color:C.textMuted}}>{k}</span>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LEARN MODE — interactive modules with star rating
+// ═══════════════════════════════════════════════════════════════════
+const MODULES=[
+  {key:'achromatic',title:'Achromatic Colors',icon:'◻',level:1,desc:'Colors with zero saturation — pure blacks, whites, and greys. Saturation = 0% removes all hue entirely.',challenge:'Remove all color: drag the triangle handle to zero saturation.',check:c=>c.s<10,success:'Perfect! Zero saturation makes hue irrelevant — pure neutral tone.',hint:'Move the SV handle left inside the triangle.'},
+  {key:'hue',title:'Understanding Hue',icon:'🌈',level:1,desc:'Hue is your position on the color wheel: 0°=Red, 60°=Yellow, 120°=Green, 180°=Cyan, 240°=Blue, 300°=Magenta.',challenge:'Drag the outer ring to approximately 120° (green).',check:c=>Math.abs(c.h-120)<18&&c.s>50,success:'Correct! 120° is the green primary — the triadic partner of red and blue.',hint:'Drag the outer ring handle to the right side of the wheel.'},
+  {key:'saturation',title:'Saturation',icon:'🎨',level:2,desc:'Saturation controls color purity. 100% = vivid and pure. 0% = grey.',challenge:'Max out saturation above 90%.',check:c=>c.s>90,success:'Vivid and pure! High saturation = maximum chromatic intensity.',hint:'Move the handle toward the pure-hue vertex (tip toward the ring).'},
+  {key:'lightness',title:'Lightness',icon:'☀',level:2,desc:'Lightness: 0%=black, 100%=white, 50%=full color. Pastels have high lightness with moderate saturation.',challenge:'Create a pastel: lightness above 72%.',check:c=>c.l>72,success:'Beautiful pastel! High lightness softens colors.',hint:'Move the triangle handle toward the white vertex.'},
+  {key:'complementary',title:'Complementary',icon:'⚡',level:3,desc:'Complementary colors are exactly 180° apart on the wheel. Maximum contrast, maximum visual tension.',challenge:'Current base is orange (30°). Find its complement near 210°.',check:c=>Math.abs(c.h-210)<22&&c.s>50,success:'Yes! 30° and 210° are complementary.',hint:'Drag the ring handle to the opposite side — 180° away from 30°.'},
+  {key:'triadic',title:'Triadic Colors',icon:'△',level:3,desc:'Three hues evenly spaced at 120° intervals.',challenge:'Find the third triadic partner of red (0°) and green (120°) — blue at 240°.',check:c=>Math.abs(c.h-240)<20&&c.s>55,success:'Blue! 0°+120°+240° = RGB triad.',hint:'Blue sits at 240° — the bottom-left area of the wheel.'},
+  {key:'warm_cool',title:'Warm vs Cool',icon:'🌡',level:2,desc:'Warm (0°–90°): energetic. Cool (150°–300°): calming, professional.',challenge:'Create a deeply cool blue-violet between 230°–270°.',check:c=>c.h>=225&&c.h<=275&&c.s>55,success:'Cool and professional! This range conveys trust and calm.',hint:'Drag the ring to the lower-left arc of the wheel.'},
+  {key:'wcag',title:'Accessibility Contrast',icon:'♿',level:4,desc:'WCAG 2.1 requires minimum 4.5:1 contrast ratio for normal text (AA). 7:1 for AAA.',challenge:'Pick a color achieving at least 4.5:1 contrast ratio against white.',check:c=>{const r=contrastRatio(hslToRgb(c.h,c.s,c.l),{r:255,g:255,b:255});return r>=4.5},success:'This color passes WCAG AA — accessible as foreground text on white.',hint:'Darker colors achieve higher contrast. Try lightness below 38%.'},
+];
+
+function LearnMode(){
+  const{C}=useTheme();
+  const{s:cfg}=useSettings();
+  const[active,setActive]=useState(null);
+  const[color,setColor]=useState({h:0,s:75,l:50});
+  const[completed,setCompleted]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem('chromix-learn')||'[]'))}catch{return new Set()}});
+  const[phase,setPhase]=useState('intro');
+  const[feedback,setFeedback]=useState('');
+  const[lastScore,setLastScore]=useState(null);
+  const saveCompleted=c=>{try{localStorage.setItem('chromix-learn',JSON.stringify([...c]))}catch{}};
+
+  const mod=active!==null?MODULES[active]:null;
+  const check=()=>{
+    if(!mod)return;
+    if(mod.check(color)){
+      const n=new Set([...completed,mod.key]);setCompleted(n);saveCompleted(n);setPhase('done');setFeedback(mod.success);
+      const score=90+Math.round(Math.random()*10);setLastScore(score);
+      RatingStore.add(score,'Learn');
+      if(cfg.soundEnabled)AudioEngine.levelUp();
+    }else setFeedback(mod.hint);
+  };
+
+  if(active===null){
+    const byLevel=[1,2,3,4].map(l=>MODULES.filter(m=>m.level===l));
+    return<div style={{animation:'fadeIn .25s ease'}}>
+      <div style={{color:C.textMuted,fontSize:12,marginBottom:20}}>
+        {completed.size}/{MODULES.length} concepts mastered
+        <div style={{height:3,background:C.border,borderRadius:2,marginTop:6,maxWidth:200}}>
+          <div style={{height:'100%',width:`${(completed.size/MODULES.length)*100}%`,background:`linear-gradient(90deg,${C.accent},${C.accentAlt})`,borderRadius:2,transition:'width .4s'}}/>
+        </div>
+      </div>
+      {byLevel.map((mods,li)=>(
+        <div key={li} style={{marginBottom:24}}>
+          <div style={{color:C.textMuted,fontSize:10,letterSpacing:3,marginBottom:10}}>LEVEL {li+1}</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(185px,1fr))',gap:10}}>
+            {mods.map(m=>{
+              const idx=MODULES.findIndex(x=>x.key===m.key);
+              const done=completed.has(m.key);
+              return<button key={m.key} onClick={()=>{setActive(idx);setPhase('intro');setColor({h:0,s:75,l:50});setFeedback('');setLastScore(null)}}
+                onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}
+                style={{background:done?C.bgSecondary:C.bgCard,border:`1px solid ${done?C.success+'44':C.border}`,borderRadius:12,padding:16,textAlign:'left',cursor:'pointer',transition:'transform .15s',fontFamily:'inherit'}}>
+                <div style={{fontSize:22,marginBottom:6}}>{m.icon}</div>
+                <div style={{color:done?C.success:C.textPrimary,fontWeight:600,fontSize:13}}>{m.title}</div>
+                {done&&<div style={{color:C.success,fontSize:10,marginTop:4}}>✓ Mastered</div>}
+              </button>;
+            })}
+          </div>
+        </div>
+      ))}
+      <Card style={{marginTop:16}}>
+        <div style={{color:C.textMuted,fontSize:9,letterSpacing:2,marginBottom:10}}>LAST 3 RATINGS</div>
+        <RatingHistoryStrip limit={3}/>
+      </Card>
+    </div>;
+  }
+
+  const ratio=contrastRatio(hslToRgb(color.h,color.s,color.l),{r:255,g:255,b:255});
+  const wl=wcagLevel(ratio);
+  return<div style={{animation:'fadeIn .25s ease'}}>
+    <Btn onClick={()=>setActive(null)} variant="ghost" small>← Back</Btn>
+    <div style={{display:'flex',gap:24,alignItems:'flex-start',flexWrap:'wrap',marginTop:16}}>
+      <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'center',width:'min(100%,320px)',flexShrink:0}}>
+        <ColorWheel color={color} onChange={setColor} locked={phase==='done'} size={Math.min(300,cfg.wheelSize)}/>
+        <div style={{width:'100%',maxWidth:300,height:52,borderRadius:10,background:`hsl(${color.h},${color.s}%,${color.l}%)`,transition:'background .06s',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <span style={{color:color.l>55?'#111':'#fff',fontFamily:'monospace',fontSize:11}}>H:{Math.round(color.h)}° S:{Math.round(color.s)}% L:{Math.round(color.l)}%</span>
+        </div>
+        {mod.key==='wcag'&&<div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:10,width:'100%',maxWidth:300,fontSize:11,fontFamily:'monospace'}}>
+          <div style={{color:C.textMuted,marginBottom:4}}>Contrast vs white:</div>
+          <div style={{color:wl.color,fontWeight:700,fontSize:14}}>{ratio.toFixed(2)}:1 — {wl.level}</div>
+        </div>}
+      </div>
+      <div style={{flex:1,minWidth:220,maxWidth:360}}>
+        <div style={{fontSize:26,marginBottom:6}}>{mod.icon}</div>
+        <h2 style={{color:C.textPrimary,marginBottom:10,fontSize:18}}>{mod.title}</h2>
+        <p style={{color:C.textSecondary,fontSize:13,lineHeight:1.75,marginBottom:18}}>{mod.desc}</p>
+        {phase!=='done'?(
+          <>
+            <Card style={{marginBottom:14}}>
+              <div style={{color:C.accent,fontSize:10,letterSpacing:2,marginBottom:6}}>CHALLENGE</div>
+              <p style={{color:C.textSecondary,fontSize:13,margin:0,lineHeight:1.6}}>{mod.challenge}</p>
+            </Card>
+            {feedback&&<div style={{background:C.bgSecondary,border:`1px solid ${C.warning}44`,borderRadius:8,padding:10,marginBottom:12}}>
+              <p style={{color:C.warning,fontSize:12,margin:0}}>💡 {feedback}</p>
+            </div>}
+            <Btn onClick={check}>CHECK ✓</Btn>
+          </>
+        ):(
+          <div>
+            <div style={{background:C.bgSecondary,border:`1px solid ${C.success}44`,borderRadius:10,padding:14,marginBottom:16}}>
+              <div style={{color:C.success,fontSize:10,letterSpacing:2,marginBottom:8}}>✓ MASTERED</div>
+              <p style={{color:C.success,fontSize:13,margin:0,lineHeight:1.6,marginBottom:12}}>{feedback}</p>
+              {lastScore&&<StarRating score={lastScore} mode="Learn"/>}
+            </div>
+            <Btn onClick={()=>setActive(null)} variant="secondary">← Back to Modules</Btn>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EXPLORE MODE
+// ═══════════════════════════════════════════════════════════════════
+const PSYCH=[
+  {hMin:345,hMax:380,name:'Red',emoji:'❤️',feel:['Passion','Urgency','Power'],cultural:'Luck (China) · Love (West) · Danger (Universal)',brands:['Coca-Cola','Netflix','YouTube','Target'],ui:'CTAs, error states, sale badges'},
+  {hMin:0,hMax:20,name:'Red',emoji:'❤️',feel:['Passion','Urgency','Power'],cultural:'Luck (China) · Love (West) · Danger (Universal)',brands:['Coca-Cola','Netflix','YouTube','Target'],ui:'CTAs, error states, sale badges'},
+  {hMin:20,hMax:46,name:'Orange',emoji:'🧡',feel:['Warmth','Creativity','Joy'],cultural:'Sacred (Buddhism) · Harvest (West) · Strength (Japan)',brands:['Amazon','Fanta','Harley-Davidson'],ui:'Food apps, playful UI, affordability signals'},
+  {hMin:46,hMax:76,name:'Yellow',emoji:'💛',feel:['Optimism','Clarity','Caution'],cultural:'Imperial (China) · Mourning (Egypt) · Joy (Universal)',brands:["McDonald's","IKEA",'Snapchat'],ui:'Highlights, ratings, warnings, attention'},
+  {hMin:76,hMax:155,name:'Green',emoji:'💚',feel:['Growth','Balance','Health'],cultural:'Nature (Universal) · Holy (Islam) · Money (USA)',brands:['Starbucks','WhatsApp','Whole Foods'],ui:'Success states, eco, finance, confirmation'},
+  {hMin:155,hMax:195,name:'Cyan',emoji:'🩵',feel:['Clarity','Freshness','Tech'],cultural:'Healing (many) · Innovation (tech world)',brands:['PayPal','Tiffany'],ui:'Tech, healthcare, fresh brands, digital'},
+  {hMin:195,hMax:262,name:'Blue',emoji:'💙',feel:['Trust','Loyalty','Calm'],cultural:'Immortality (Iran) · Mourning (Korea) · Reliability (West)',brands:['Facebook','Samsung','Ford'],ui:'Corporate, banking, social platforms'},
+  {hMin:262,hMax:312,name:'Purple',emoji:'💜',feel:['Creativity','Luxury','Mystery'],cultural:'Royalty (West) · Death (Brazil) · Spiritual (Universal)',brands:['Cadbury','Twitch','FedEx'],ui:'Premium tiers, beauty products, crypto'},
+  {hMin:312,hMax:345,name:'Pink',emoji:'🩷',feel:['Romance','Playfulness','Softness'],cultural:'Feminine (West) · Love · Hope',brands:['Barbie','T-Mobile','Lyft'],ui:'Beauty, children, romance, compassion'},
+];
+function getPsych(h){return PSYCH.find(p=>h>=p.hMin&&h<p.hMax)??PSYCH[0]}
+
+function ExploreMode(){
+  const{C}=useTheme();
+  const{s:cfg}=useSettings();
+  const[color,setColor]=useState({h:210,s:72,l:52});
+  const[tab,setTab]=useState('psychology');
+  const{history,push}=useColorHistory();
+  const rgb=hslToRgb(color.h,color.s,color.l),hex=rgbToHex(rgb);
+  const psych=getPsych(color.h);
+  const bg=`hsl(${color.h},${color.s}%,${color.l}%)`;
+  const tC=color.l>55?'#11112a':'#fff';
+  const schemes=useMemo(()=>({
+    Monochromatic:[{h:color.h,s:color.s*.6,l:color.l*.7},{h:color.h,s:color.s*.8,l:color.l*.85},{h:color.h,s:color.s,l:color.l},{h:color.h,s:color.s*.9,l:Math.min(92,color.l*1.25)}],
+    Analogous:[{h:(color.h+30)%360,s:color.s,l:color.l},{h:color.h,s:color.s,l:color.l},{h:(color.h-30+360)%360,s:color.s,l:color.l}],
+    Complementary:[{h:color.h,s:color.s,l:color.l},{h:(color.h+180)%360,s:color.s,l:color.l}],
+    'Split-Comp':[{h:color.h,s:color.s,l:color.l},{h:(color.h+150)%360,s:color.s,l:color.l},{h:(color.h+210)%360,s:color.s,l:color.l}],
+    Triadic:[{h:color.h,s:color.s,l:color.l},{h:(color.h+120)%360,s:color.s,l:color.l},{h:(color.h+240)%360,s:color.s,l:color.l}],
+    Tetradic:[{h:color.h,s:color.s,l:color.l},{h:(color.h+90)%360,s:color.s,l:color.l},{h:(color.h+180)%360,s:color.s,l:color.l},{h:(color.h+270)%360,s:color.s,l:color.l}],
+  }),[color]);
+  const wcagW=contrastRatio(rgb,{r:255,g:255,b:255}),wcagB=contrastRatio(rgb,{r:0,g:0,b:0});
+  return<div style={{display:'flex',gap:24,flexWrap:'wrap',animation:'fadeIn .25s ease'}}>
+    <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'center',width:'min(100%,320px)',flexShrink:0}}>
+      <ColorWheel color={color} onChange={c=>{setColor(c);push(c)}} size={Math.min(300,cfg.wheelSize)}/>
+      <div style={{width:'100%',maxWidth:300,height:68,borderRadius:12,background:bg,boxShadow:`0 6px 24px ${bg}55`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2}}>
+        <span style={{color:tC,fontFamily:'monospace',fontSize:14,fontWeight:700}}>{hex}</span>
+        <span style={{color:tC,fontFamily:'monospace',fontSize:10,opacity:.6}}>{Math.round(color.h)}° {Math.round(color.s)}% {Math.round(color.l)}%</span>
+      </div>
+    </div>
+    <div style={{flex:1,minWidth:260}}>
+      <div style={{display:'flex',gap:4,marginBottom:16,flexWrap:'wrap'}}>
+        {['psychology','schemes','wcag','history'].map(t=>(
+          <Btn key={t} onClick={()=>setTab(t)} variant={tab===t?'primary':'ghost'} small>{t.charAt(0).toUpperCase()+t.slice(1)}</Btn>
+        ))}
+      </div>
+      {tab==='psychology'&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <span style={{fontSize:40}}>{psych.emoji}</span>
+          <div><h3 style={{color:C.textPrimary,margin:0,fontSize:18}}>{psych.name}</h3>
+            <div style={{display:'flex',gap:5,flexWrap:'wrap',marginTop:5}}>{psych.feel.map(f=><Badge key={f} bg={`hsl(${color.h},${color.s}%,18%)`} color={`hsl(${color.h},70%,70%)`}>{f}</Badge>)}</div>
+          </div>
+        </div>
+        {[['Cultural Meanings',psych.cultural],['Brand Usage',psych.brands.join(' · ')],['UI/UX Context',psych.ui]].map(([h,v])=>(
+          <Card key={h}><div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:6}}>{h.toUpperCase()}</div><p style={{color:C.textSecondary,fontSize:13,margin:0,lineHeight:1.7}}>{v}</p></Card>
+        ))}
+      </div>}
+      {tab==='schemes'&&<div>
+        {Object.entries(schemes).map(([name,cols])=>(
+          <div key={name} style={{marginBottom:18}}>
+            <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:8}}>{name.toUpperCase()}</div>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              {cols.map((c,i)=>(
+                <div key={i} onClick={()=>setColor(c)} title={`H:${Math.round(c.h)}°`}
+                  style={{width:44,height:44,borderRadius:8,background:`hsl(${c.h},${c.s}%,${c.l}%)`,cursor:'pointer',transition:'transform .15s',outline:i===0?`2px solid ${C.accent}`:'none',outlineOffset:2}}
+                  onMouseEnter={e=>e.currentTarget.style.transform='scale(1.12)'} onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>}
+      {tab==='wcag'&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div style={{display:'flex',gap:8}}>
+          {[['#fff','vs White',wcagW],['#000','vs Black',wcagB]].map(([bg,label,ratio])=>{
+            const wl=wcagLevel(ratio);
+            return<div key={label} style={{flex:1,background:bg,borderRadius:10,padding:14,boxShadow:'0 2px 8px rgba(0,0,0,.2)'}}>
+              <div style={{color:bg==='#fff'?'#000':'#fff',fontSize:14,fontWeight:700,fontFamily:'monospace',marginBottom:6}}>Sample text</div>
+              <div style={{color:wl.color,fontSize:11,fontWeight:700}}>{ratio.toFixed(1)}:1 {wl.level}</div>
+            </div>;
+          })}
+        </div>
+        <Card>
+          <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:10}}>WCAG 2.1 THRESHOLDS</div>
+          {[['AA Normal text','4.5:1'],['AA Large text (18pt+)','3:1'],['AAA Enhanced','7:1']].map(([l,v])=>(
+            <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:`1px solid ${C.border}`}}>
+              <span style={{color:C.textSecondary,fontSize:12}}>{l}</span>
+              <span style={{color:C.accent,fontFamily:'monospace',fontSize:12}}>{v}</span>
+            </div>
+          ))}
+        </Card>
+      </div>}
+      {tab==='history'&&<Card><HistoryTimeline history={history} onSelect={setColor} onExport={fmt=>exportPalette(history,fmt)} C={C}/></Card>}
+    </div>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  BRAND PSYCHOLOGY TAB
+// ═══════════════════════════════════════════════════════════════════
+const BRANDS=[
+  {name:'Coca-Cola',emoji:'🥤',industry:'Beverages',hsl:{h:0,s:88,l:42},primary:'Classic Coca-Cola Red (#F40009)',emotions:['Excitement','Energy','Nostalgia','Happiness'],cultural:'In the West, red signals urgency and impulse purchase. Coca-Cola weaponizes this — studies show the red increases heart rate by an average of 7%.',uiUX:'High-contrast red on white or black. Use red exclusively for the most important CTAs in consumer products. Never use red for body text — exhausting.',alt:{h:200,s:88,l:42}},
+  {name:"McDonald's",emoji:'🍔',industry:'Fast Food',hsl:{h:40,s:95,l:50},primary:"McDonald's Golden Yellow (#FFC72C)",emotions:['Hunger','Friendliness','Optimism','Speed'],cultural:"Yellow stimulates appetite and communicates affordability. Their red-yellow combination triggers genuine physiological hunger responses.",uiUX:'Use yellow for promotional banners and urgency. Ideal for food delivery, promotional retail.',alt:{h:120,s:65,l:38}},
+  {name:'Facebook',emoji:'👍',industry:'Social Media',hsl:{h:220,s:65,l:42},primary:'Facebook Blue (#1877F2)',emotions:['Trust','Reliability','Connection','Community'],cultural:"Blue is universally the world's most liked color. It's calm, non-threatening, and psychologically safe.",uiUX:'Use blue for primary actions in enterprise, fintech, and healthcare. Creates authority without aggression.',alt:{h:0,s:70,l:45}},
+  {name:'Starbucks',emoji:'☕',industry:'Coffee',hsl:{h:140,s:55,l:28},primary:'Starbucks Green (#00704A)',emotions:['Natural','Premium','Calm','Earth'],cultural:'Dark green communicates premium quality, environmental stewardship, and wellness.',uiUX:"Dark greens work best for premium lifestyle and wellness brands. Pair with cream or off-white.",alt:{h:220,s:55,l:28}},
+  {name:'Apple',emoji:'🍎',industry:'Technology',hsl:{h:0,s:0,l:20},primary:'Space Black / Silver (#1d1d1f)',emotions:['Sophistication','Innovation','Premium','Control'],cultural:'Apple avoids saturated color in primary branding — signals restraint and confidence.',uiUX:'Near-black primary works for luxury and premium tech. Requires flawless typography.',alt:{h:280,s:60,l:35}},
+  {name:'Spotify',emoji:'🎵',industry:'Music/Tech',hsl:{h:128,s:90,l:48},primary:'Spotify Green (#1DB954)',emotions:['Energy','Freshness','Modern','Growth'],cultural:'Spotify chose vivid mid-green to stand apart from Apple and tech giants (blue).',uiUX:'High-saturation vivid greens read as modern, energetic, and digital-native.',alt:{h:0,s:85,l:45}},
+  {name:'Cadbury',emoji:'🍫',industry:'Confectionery',hsl:{h:273,s:60,l:32},primary:'Cadbury Purple (#4D1680)',emotions:['Luxury','Indulgence','Royalty','Pleasure'],cultural:'Cadbury trademarked their specific purple shade. Purple dye was historically rarer than gold.',uiUX:'Deep purples signal premium pricing and indulgence. Use for luxury goods.',alt:{h:40,s:75,l:42}},
+  {name:'IKEA',emoji:'🪑',industry:'Retail/Furniture',hsl:{h:225,s:90,l:40},primary:'IKEA Blue (#003399)',emotions:['Trust','Affordability','Reliability','Practicality'],cultural:"IKEA uses Sweden's national colors (blue and yellow) — subconscious Scandinavian quality association.",uiUX:'Deep blue + yellow accent is the classic retail contrast pairing for readability and trust.',alt:{h:120,s:55,l:35}},
+];
+
+function BrandPsychologyTab(){
+  const{C}=useTheme();
+  const[active,setActive]=useState(null);
+  const[altMode,setAltMode]=useState(false);
+  if(active!==null){
+    const brand=BRANDS[active];
+    const displayHsl=altMode?brand.alt:brand.hsl;
+    const dRgb=hslToRgb(displayHsl.h,displayHsl.s,displayHsl.l);
+    const dHex=rgbToHex(dRgb);
+    const ratio1=contrastRatio(dRgb,{r:255,g:255,b:255}),ratio2=contrastRatio(dRgb,{r:0,g:0,b:0});
+    const wl1=wcagLevel(ratio1),wl2=wcagLevel(ratio2);
+    return<div style={{animation:'fadeIn .2s ease'}}>
+      <Btn onClick={()=>{setActive(null);setAltMode(false)}} variant="ghost" small>← All Brands</Btn>
+      <div style={{display:'flex',gap:24,marginTop:16,flexWrap:'wrap',alignItems:'flex-start'}}>
+        <div style={{flexShrink:0,width:'min(100%,280px)'}}>
+          <div style={{height:140,borderRadius:14,background:`hsl(${displayHsl.h},${displayHsl.s}%,${displayHsl.l}%)`,boxShadow:`0 8px 32px hsl(${displayHsl.h},${displayHsl.s}%,${displayHsl.l}%)55`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:52,marginBottom:12,transition:'background .3s'}}>{brand.emoji}</div>
+          <div style={{fontFamily:'monospace',fontSize:12,color:C.textSecondary,marginBottom:12,textAlign:'center'}}>{dHex} · HSL({displayHsl.h},{displayHsl.s}%,{displayHsl.l}%)</div>
+          <div style={{display:'flex',gap:6,marginBottom:12}}>
+            <div style={{flex:1,background:'#fff',borderRadius:8,padding:10,textAlign:'center'}}><div style={{color:wl1.color,fontWeight:700,fontSize:13}}>{ratio1.toFixed(1)}:1</div><div style={{color:'#888',fontSize:10}}>{wl1.level} on white</div></div>
+            <div style={{flex:1,background:'#111',borderRadius:8,padding:10,textAlign:'center'}}><div style={{color:wl2.color,fontWeight:700,fontSize:13}}>{ratio2.toFixed(1)}:1</div><div style={{color:'#666',fontSize:10}}>{wl2.level} on black</div></div>
+          </div>
+          <div style={{display:'flex',gap:6}}>
+            <Btn onClick={()=>setAltMode(false)} variant={!altMode?'primary':'ghost'} small style={{flex:1}}>Original</Btn>
+            <Btn onClick={()=>setAltMode(true)} variant={altMode?'primary':'ghost'} small style={{flex:1}}>Alt Color</Btn>
+          </div>
+        </div>
+        <div style={{flex:1,minWidth:240}}>
+          <h2 style={{color:C.textPrimary,marginBottom:4,fontSize:20}}>{brand.name}</h2>
+          <div style={{color:C.textMuted,fontSize:12,marginBottom:16}}>{brand.industry}</div>
+          <Card style={{marginBottom:12}}><div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:6}}>PRIMARY COLOR</div><p style={{color:C.textSecondary,fontSize:13,margin:0}}>{brand.primary}</p></Card>
+          <Card style={{marginBottom:12}}><div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:8}}>EMOTIONAL TRIGGERS</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}>{brand.emotions.map(e=><Badge key={e} bg={`hsl(${displayHsl.h},${displayHsl.s}%,15%)`} color={`hsl(${displayHsl.h},70%,65%)`}>{e}</Badge>)}</div></Card>
+          <Card style={{marginBottom:12}}><div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:6}}>CULTURAL CONTEXT</div><p style={{color:C.textSecondary,fontSize:13,margin:0,lineHeight:1.7}}>{brand.cultural}</p></Card>
+          <Card><div style={{color:C.accent,fontSize:10,letterSpacing:2,marginBottom:6}}>UI/UX IMPLICATIONS</div><p style={{color:C.textSecondary,fontSize:13,margin:0,lineHeight:1.7}}>{brand.uiUX}</p></Card>
+        </div>
+      </div>
+    </div>;
+  }
+  return<div style={{animation:'fadeIn .25s ease'}}>
+    <p style={{color:C.textSecondary,fontSize:13,marginBottom:24,maxWidth:560,lineHeight:1.7}}>How major brands use color psychology as strategic infrastructure. Click any brand to see the reasoning behind their primary color choice.</p>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(195px,1fr))',gap:12}}>
+      {BRANDS.map((b,i)=>{
+        const bRgb=hslToRgb(b.hsl.h,b.hsl.s,b.hsl.l);const bHex=rgbToHex(bRgb);const tC=b.hsl.l>55?'#111':'#fff';
+        return<button key={b.name} onClick={()=>setActive(i)}
+          onMouseEnter={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}
+          style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,overflow:'hidden',cursor:'pointer',textAlign:'left',transition:'transform .15s,box-shadow .15s',fontFamily:'inherit'}}>
+          <div style={{height:80,background:`hsl(${b.hsl.h},${b.hsl.s}%,${b.hsl.l}%)`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px'}}>
+            <span style={{fontSize:28}}>{b.emoji}</span>
+            <span style={{color:tC,fontFamily:'monospace',fontSize:10,opacity:.75}}>{bHex}</span>
+          </div>
+          <div style={{padding:'12px 14px'}}>
+            <div style={{color:C.textPrimary,fontWeight:700,marginBottom:2}}>{b.name}</div>
+            <div style={{color:C.textMuted,fontSize:11}}>{b.industry}</div>
+          </div>
+        </button>;
+      })}
+    </div>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GUIDE TAB
+// ═══════════════════════════════════════════════════════════════════
+const GUIDE_STEPS=[
+  {title:'The Color Wheel',icon:'◉',content:'The outer ring selects Hue — the color family. Drag anywhere on the colored ring to change it. Think of it as a clock: red at 12, yellow at 2, green at 4, cyan at 6, blue at 8, magenta at 10.'},
+  {title:'The Inner Triangle',icon:'△',content:'Inside the ring is an equilateral triangle controlling Saturation and Lightness simultaneously. The three corners represent: Pure Color (hue vertex), White, and Black.'},
+  {title:'Keyboard Controls',icon:'⌨',content:'Arrow Left/Right: adjust Hue. Arrow Up/Down: adjust Lightness. Shift+Arrow Up/Down: adjust Saturation. Enter: Submit round. N: Next round. Tab: Toggle Expert Panel. 1-4: Change difficulty.'},
+  {title:'Hue — The Color Family',icon:'🌈',content:"Hue is measured in degrees (0°–360°). It's the 'name' of the color: red, orange, yellow, green, blue, purple. Changing hue rotates your position on the color wheel."},
+  {title:'Saturation — Color Intensity',icon:'🎨',content:'Saturation is how vivid or grey a color is. 100% = pure, vibrant color. 0% = grey. In the triangle, moving toward the pure-hue corner increases saturation.'},
+  {title:'Lightness — Brightness',icon:'☀',content:"Lightness goes from 0% (black) to 100% (white). Moving toward the white corner lightens. 50% is the 'full' expression of a color."},
+  {title:'Star Rating System',icon:'⭐',content:'Every task you complete earns 1–5 stars based on accuracy. 5 stars = 95%+ (Perfect!), 4 stars = 85%+, 3 stars = 70%+, 2 stars = 50%+, 1 star = below 50%.'},
+  {title:'Delta E 2000 Scoring',icon:'📐',content:'Score calculated using CIE Delta E 2000 (ΔE₀₀), the scientific standard for perceptual color difference. ΔE < 1 = imperceptible (100pts). ΔE ≥ 25 = very different (0pts).'},
+];
+const GLOSSARY=[
+  {term:'HSL',def:'Hue-Saturation-Lightness. The most intuitive color model for design. H: 0-360°, S: 0-100%, L: 0-100%.'},
+  {term:'Delta E (ΔE₀₀)',def:'Scientific measure of perceptual color difference. ΔE=1.0 is just noticeable. ΔE<1 is imperceptible. ΔE=5 is visible. ΔE>25 is dramatically different.'},
+  {term:'WCAG',def:'Web Content Accessibility Guidelines. AA standard requires minimum 4.5:1 contrast ratio for text. AAA requires 7:1.'},
+  {term:'Complementary',def:'Colors 180° apart on the wheel. Maximum contrast when paired. Red + Cyan, Blue + Orange.'},
+  {term:'Triadic',def:'Three colors equally spaced at 120° intervals on the wheel. RGB (0°,120°,240°) is the classic screen triad.'},
+  {term:'Saturation',def:'Color purity/intensity. 0% = achromatic grey. 100% = vivid, fully saturated.'},
+  {term:'Lightness',def:"Luminance from black (0%) to white (100%). 50% is the 'full' version of a color. Pastels ≈ 70-85%."},
+  {term:'Barycentric Coords',def:"Mathematical weights describing a point's position relative to triangle vertices. Used to map triangle position ↔ HSV color space."},
+];
+
+function HelpGuideTab(){
+  const{C}=useTheme();
+  const{s:cfg}=useSettings();
+  const[step,setStep]=useState(null);
+  const[sandboxColor,setSandboxColor]=useState({h:200,s:70,l:55});
+  const[section,setSection]=useState('guide');
+  const rgb=hslToRgb(sandboxColor.h,sandboxColor.s,sandboxColor.l);
+  const lab=rgbToLab(rgb);
+  const wr=contrastRatio(rgb,{r:255,g:255,b:255}),br=contrastRatio(rgb,{r:0,g:0,b:0});
+  return<div style={{animation:'fadeIn .25s ease'}}>
+    <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
+      {[['guide','📖 Guide'],['glossary','📚 Glossary'],['sandbox','🎮 Sandbox']].map(([v,l])=>(
+        <Btn key={v} onClick={()=>setSection(v)} variant={section===v?'primary':'ghost'}>{l}</Btn>
+      ))}
+    </div>
+    {section==='guide'&&(step===null?(
+      <div>
+        <p style={{color:C.textSecondary,fontSize:13,marginBottom:20,lineHeight:1.7,maxWidth:560}}>Complete walkthrough from basic interaction to advanced scoring mechanics.</p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(225px,1fr))',gap:12}}>
+          {GUIDE_STEPS.map((gs,i)=>(
+            <button key={i} onClick={()=>setStep(i)}
+              onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}
+              style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:16,textAlign:'left',cursor:'pointer',transition:'transform .15s',fontFamily:'inherit'}}>
+              <div style={{fontSize:24,marginBottom:8}}>{gs.icon}</div>
+              <div style={{color:C.textPrimary,fontWeight:600,fontSize:13,marginBottom:4}}>{gs.title}</div>
+              <div style={{color:C.textMuted,fontSize:11}}>Step {i+1} of {GUIDE_STEPS.length}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    ):(
+      <div>
+        <Btn onClick={()=>setStep(null)} variant="ghost" small>← All Steps</Btn>
+        <Card style={{marginTop:16,maxWidth:560}}>
+          <div style={{fontSize:40,marginBottom:10}}>{GUIDE_STEPS[step].icon}</div>
+          <h2 style={{color:C.textPrimary,marginBottom:14,fontSize:18}}>Step {step+1}: {GUIDE_STEPS[step].title}</h2>
+          <p style={{color:C.textSecondary,fontSize:14,lineHeight:1.8,margin:'0 0 20px'}}>{GUIDE_STEPS[step].content}</p>
+          <div style={{display:'flex',gap:8}}>
+            {step>0&&<Btn onClick={()=>setStep(s=>s-1)} variant="secondary">← Prev</Btn>}
+            {step<GUIDE_STEPS.length-1&&<Btn onClick={()=>setStep(s=>s+1)}>Next →</Btn>}
+          </div>
+        </Card>
+      </div>
+    ))}
+    {section==='glossary'&&(
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:10}}>
+        {GLOSSARY.map(({term,def})=>(
+          <div key={term} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:14}}>
+            <div style={{color:C.accent,fontWeight:700,fontSize:13,marginBottom:6,fontFamily:'monospace'}}>{term}</div>
+            <p style={{color:C.textSecondary,fontSize:13,margin:0,lineHeight:1.65}}>{def}</p>
+          </div>
+        ))}
+      </div>
+    )}
+    {section==='sandbox'&&(
+      <div style={{display:'flex',gap:24,flexWrap:'wrap'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'center',width:'min(100%,320px)',flexShrink:0}}>
+          <ColorWheel color={sandboxColor} onChange={setSandboxColor} size={Math.min(300,cfg.wheelSize)}/>
+          <div style={{width:'100%',maxWidth:300,height:64,borderRadius:12,background:`hsl(${sandboxColor.h},${sandboxColor.s}%,${sandboxColor.l}%)`,boxShadow:`0 6px 24px hsl(${sandboxColor.h},${sandboxColor.s}%,${sandboxColor.l}%)44`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+            <span style={{color:sandboxColor.l>55?'#111':'#fff',fontFamily:'monospace',fontSize:14,fontWeight:700}}>{rgbToHex(rgb)}</span>
+            <span style={{color:sandboxColor.l>55?'#11113388':'#ffffff88',fontFamily:'monospace',fontSize:10}}>H:{Math.round(sandboxColor.h)}° S:{Math.round(sandboxColor.s)}% L:{Math.round(sandboxColor.l)}%</span>
+          </div>
+        </div>
+        <div style={{flex:1,minWidth:240}}>
+          <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:14}}>FREE EXPLORATION SANDBOX</div>
+          <Card style={{marginBottom:12,fontFamily:'monospace',fontSize:12,lineHeight:2}}>
+            <div style={{color:C.textMuted,letterSpacing:2,marginBottom:6,fontSize:10}}>COLOR VALUES</div>
+            <div style={{color:C.textSecondary}}>HSL: {Math.round(sandboxColor.h)}° {Math.round(sandboxColor.s)}% {Math.round(sandboxColor.l)}%</div>
+            <div style={{color:C.textSecondary}}>RGB: {rgb.r}, {rgb.g}, {rgb.b}</div>
+            <div style={{color:C.textSecondary}}>HEX: {rgbToHex(rgb)}</div>
+            <div style={{color:C.textSecondary}}>Lab: L{lab.L.toFixed(1)} a{lab.a.toFixed(1)} b{lab.b.toFixed(1)}</div>
+          </Card>
+          <Card style={{marginBottom:12}}>
+            <div style={{color:C.textMuted,fontSize:10,letterSpacing:2,marginBottom:10}}>CONTRAST RATIOS</div>
+            <div style={{display:'flex',gap:8}}>
+              <div style={{flex:1,background:'#fff',borderRadius:8,padding:10,textAlign:'center'}}><div style={{color:wcagLevel(wr).color,fontWeight:700,fontFamily:'monospace'}}>{wr.toFixed(1)}:1</div><div style={{color:'#888',fontSize:10}}>{wcagLevel(wr).level}</div></div>
+              <div style={{flex:1,background:'#111',borderRadius:8,padding:10,textAlign:'center'}}><div style={{color:wcagLevel(br).color,fontWeight:700,fontFamily:'monospace'}}>{br.toFixed(1)}:1</div><div style={{color:'#666',fontSize:10}}>{wcagLevel(br).level}</div></div>
+            </div>
+          </Card>
+          <div style={{display:'flex',gap:8}}>
+            <Btn onClick={()=>exportPalette([sandboxColor],'json')} variant="ghost" small>⬇ JSON</Btn>
+            <Btn onClick={()=>exportPalette([sandboxColor],'css')} variant="ghost" small>⬇ CSS</Btn>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════════════
+function SettingsPanel({onClose,C}){
+  const{s,update}=useSettings();
+  const sliders=[
+    {key:'wheelSize',label:'Wheel Size',min:200,max:380,step:10},
+    {key:'ringThicknessRatio',label:'Ring Thickness',min:.06,max:.22,step:.005},
+    {key:'triRadiusRatio',label:'Triangle Size',min:.2,max:.42,step:.005},
+    {key:'sensitivity',label:'Drag Sensitivity',min:.3,max:2.5,step:.1},
+  ];
+  return<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',animation:'fadeIn .2s ease'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+    <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:18,padding:28,width:'min(90vw,440px)',maxHeight:'85vh',overflow:'auto'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <span style={{fontWeight:700,fontSize:16,color:C.textPrimary}}>⚙ Settings</span>
+        <Btn onClick={onClose} variant="ghost" small>✕ Close [ESC]</Btn>
+      </div>
+      {sliders.map(({key,label,min,max,step})=>(
+        <div key={key} style={{marginBottom:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+            <span style={{color:C.textSecondary,fontSize:13}}>{label}</span>
+            <span style={{color:C.accent,fontFamily:'monospace',fontSize:12}}>{s[key]}</span>
+          </div>
+          <input type="range" min={min} max={max} step={step} value={s[key]} onChange={e=>update({[key]:+e.target.value})}/>
+        </div>
+      ))}
+      <div style={{marginBottom:16}}>
+        <span style={{color:C.textSecondary,fontSize:13,display:'block',marginBottom:8}}>Scoring Strictness</span>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {['relaxed','standard','strict','wcag'].map(v=>(
+            <Btn key={v} onClick={()=>update({scoringStrictness:v})} variant={s.scoringStrictness===v?'primary':'ghost'} small>{v}</Btn>
+          ))}
+        </div>
+      </div>
+      <Toggle on={s.precisionMode} onToggle={()=>update({precisionMode:!s.precisionMode})} label="Precision Mode (live HSL + Lab + ΔE)" C={C}/>
+      <Toggle on={s.soundEnabled} onToggle={()=>{update({soundEnabled:!s.soundEnabled});if(!s.soundEnabled)AudioEngine.click()}} label="Sound Feedback" C={C}/>
+      <div style={{borderTop:`1px solid ${C.border}`,marginTop:16,paddingTop:16,display:'flex',gap:8,flexWrap:'wrap'}}>
+        <Btn onClick={()=>update({wheelSize:300,ringThicknessRatio:.115,triRadiusRatio:.315,sensitivity:1.0,scoringStrictness:'standard'})} variant="ghost" small>↺ Reset Defaults</Btn>
+        <Btn onClick={()=>{if(confirm('Clear all progress, history, and settings?')){localStorage.clear();window.location.reload()}}} variant="danger" small>⚠ Clear All Data</Btn>
+      </div>
+    </div>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  APP SHELL
+// ═══════════════════════════════════════════════════════════════════
+const TABS=[
+  {id:'game',   icon:'🎯',label:'Classic'},
+  {id:'sprint', icon:'⏱',label:'Sprint'},
+  {id:'levels', icon:'🏆',label:'Levels'},
+  {id:'learn',  icon:'📚',label:'Learn'},
+  {id:'explore',icon:'🌈',label:'Explore'},
+  {id:'brands', icon:'🏢',label:'Brands'},
+  {id:'guide',  icon:'❓',label:'Guide'},
+];
+
+function AppShell(){
+  const{theme,C,cycleTheme}=useTheme();
+  const{s}=useSettings();
+  const[tab,setTab]=useState('levels');
+  const[showSettings,setShowSettings]=useState(false);
+
+  useEffect(()=>{
+    const handler=e=>{if(e.key==='Escape')setShowSettings(false)};
+    window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler);
+  },[]);
+
+  return<div style={{minHeight:'100vh',background:'transparent',color:C.textPrimary,fontFamily:"'Syne',system-ui,sans-serif"}}>
+    {/* Header */}
+    <header style={{borderBottom:`1px solid ${C.border}`,padding:'10px clamp(12px,3vw,20px)',display:'flex',flexWrap:'wrap',gap:8,justifyContent:'space-between',alignItems:'center',background:C.bgCard,position:'sticky',top:0,zIndex:50,backdropFilter:'blur(16px)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontSize:22,display:'inline-block',animation:'spin 18s linear infinite',color:C.accent,lineHeight:1}}>◉</span>
+        <span style={{fontWeight:800,fontSize:'clamp(14px,3vw,18px)',letterSpacing:-.5}}>
+          Chro<span style={{color:C.accent}}>mix</span>
+          <sup style={{fontSize:9,color:C.textMuted,marginLeft:4,letterSpacing:1}}>v1</sup>
+        </span>
+      </div>
+      <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+        {s.precisionMode&&<span style={{fontSize:9,letterSpacing:1,color:C.accent,border:`1px solid ${C.accent}44`,borderRadius:4,padding:'2px 6px'}}>PRECISION</span>}
+        {s.soundEnabled&&<span title="Sound enabled" style={{fontSize:13}}>🔊</span>}
+        <Btn onClick={()=>setShowSettings(true)} variant="ghost" small title="Settings">⚙</Btn>
+        <Btn onClick={cycleTheme} variant="ghost" small title={`Theme: ${theme}`}>{THEME_ICONS[theme]}</Btn>
+      </div>
+    </header>
+    {/* Tab Nav */}
+    <nav style={{display:'flex',borderBottom:`1px solid ${C.border}`,padding:'0 clamp(8px,2vw,16px)',background:C.bgSecondary,overflowX:'auto'}}>
+      {TABS.map(t=>(
+        <button key={t.id} onClick={()=>setTab(t.id)}
+          style={{padding:'12px clamp(10px,2vw,16px)',background:'none',border:'none',borderBottom:`2px solid ${tab===t.id?C.accent:'transparent'}`,color:tab===t.id?C.textPrimary:C.textMuted,fontSize:13,cursor:'pointer',transition:'color .2s,border-color .2s',display:'flex',alignItems:'center',gap:6,flexShrink:0,fontFamily:'inherit',fontWeight:tab===t.id?700:400}}>
+          <span>{t.icon}</span>
+          <span className="tab-label">{t.label}</span>
+        </button>
+      ))}
+    </nav>
+    {/* Main Content */}
+    <main key={tab} style={{maxWidth:980,margin:'0 auto',padding:'clamp(16px,4vw,28px) clamp(10px,3vw,18px)',animation:'fadeIn .22s ease'}}>
+      {tab==='game'   &&<GameMode/>}
+      {tab==='sprint' &&<SprintMode/>}
+      {tab==='levels' &&<LevelMode/>}
+      {tab==='learn'  &&<LearnMode/>}
+      {tab==='explore'&&<ExploreMode/>}
+      {tab==='brands' &&<BrandPsychologyTab/>}
+      {tab==='guide'  &&<HelpGuideTab/>}
+    </main>
+    {/* Footer */}
+    <footer style={{textAlign:'center',padding:'20px',color:C.textMuted,fontSize:9,letterSpacing:2,borderTop:`1px solid ${C.border}`}}>
+      CHROMIX · CIE ΔE₂₀₀₀ · WCAG 2.1 · COLOR HARMONY ENGINE · PERCEPTUALLY UNIFORM
+    </footer>
+    {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} C={C}/>}
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ROOT
+// ═══════════════════════════════════════════════════════════════════
+function App(){
+  return<ThemeProvider>
+    <SettingsProvider>
+      <AppShell/>
+    </SettingsProvider>
+  </ThemeProvider>;
+}
+
+const root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
