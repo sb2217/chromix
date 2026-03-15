@@ -70,6 +70,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 @keyframes starPop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
 @keyframes lcPop{from{transform:scale(.78);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes btnPulseGlow{0%,100%{box-shadow:0 4px 18px var(--acc-glow),0 0 0 0 var(--acc-glow)}50%{box-shadow:0 6px 28px var(--acc-glow),0 0 14px 2px var(--acc-glow)}}
+@keyframes bounceIn{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes slideRight{from{transform:translateX(-16px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+@keyframes popIn{from{transform:scale(0) rotate(-10deg);opacity:0}to{transform:scale(1) rotate(0deg);opacity:1}}
+/* Learn mode responsive */
+@media(max-width:640px){
+  .learn-phase-grid{grid-template-columns:1fr!important}
+  .learn-wheel-col{width:100%!important}
+}
+/* Learn module card hover polish */
+.learn-module-card{transition:transform .17s cubic-bezier(.34,1.56,.64,1),box-shadow .17s,border-color .17s!important}
+.learn-phase-tab{transition:all .15s ease!important}
+/* Smooth quiz option transitions */
+.quiz-option{transition:background .18s ease,border-color .18s ease,color .18s ease!important}
 nav::-webkit-scrollbar{display:none}
 nav{scrollbar-width:none;-ms-overflow-style:none}
 @media(max-width:500px){.tab-label{display:none!important}}
@@ -1787,24 +1801,18 @@ function LevelMode(){
     }
   };
 
-  // Always-fresh refs so keyboard handler never has stale closures
-  const submitRef=useRef(submit);
-  const nextTaskRef=useRef(nextTask);
-  useEffect(()=>{submitRef.current=submit;},[submit]);
-  useEffect(()=>{nextTaskRef.current=nextTask;},[nextTask]);
-
   // Keyboard: arrows nudge active marker
   useEffect(()=>{
     const handler=e=>{
       if(!selectedLevel)return;
-      if(e.key==='Enter'||e.key===' '){e.preventDefault();if(phase==='playing')submitRef.current();else nextTaskRef.current();return}
-      if(e.key==='n'||e.key==='N'){if(phase==='submitted')nextTaskRef.current();return}
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();if(phase==='playing')submit();else nextTask();return}
+      if(e.key==='n'||e.key==='N'){if(phase==='submitted')nextTask();return}
       if(e.key==='r'||e.key==='R'){startLevel(selectedLevel);return}
       if(e.key==='ArrowLeft'){e.preventDefault();setMarkers(prev=>{const n=[...prev];const draggables=n.map((m,i)=>({m,i})).filter(x=>x.m.draggable);if(!draggables.length)return n;const idx=draggables[0].i;n[idx]={...n[idx],hue:HarmonyMath.norm(n[idx].hue-2),label:`${Math.round(HarmonyMath.norm(n[idx].hue-2))}°`};return n})}
       if(e.key==='ArrowRight'){e.preventDefault();setMarkers(prev=>{const n=[...prev];const draggables=n.map((m,i)=>({m,i})).filter(x=>x.m.draggable);if(!draggables.length)return n;const idx=draggables[0].i;n[idx]={...n[idx],hue:HarmonyMath.norm(n[idx].hue+2),label:`${Math.round(HarmonyMath.norm(n[idx].hue+2))}°`};return n})}
     };
     window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler);
-  },[selectedLevel,phase]);
+  },[selectedLevel,phase,taskIdx]);
 
   // ── Level select grid ──
   if(!selectedLevel){
@@ -1985,116 +1993,735 @@ function LevelMode(){
 // ═══════════════════════════════════════════════════════════════════
 //  LEARN MODE — interactive modules with star rating
 // ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+//  LEARN MODE — Enhanced interactive learning experience
+// ═══════════════════════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  LEARN MODE — Enhanced interactive learning experience
+// ═══════════════════════════════════════════════════════════════════
+
 const MODULES=[
-  {key:'achromatic',title:'Achromatic Colors',icon:'◻',level:1,desc:'Colors with zero saturation — pure blacks, whites, and greys. Saturation = 0% removes all hue entirely.',challenge:'Remove all color: drag the triangle handle to zero saturation.',check:c=>c.s<10,success:'Perfect! Zero saturation makes hue irrelevant — pure neutral tone.',hint:'Move the SV handle left inside the triangle.'},
-  {key:'hue',title:'Understanding Hue',icon:'🌈',level:1,desc:'Hue is your position on the color wheel: 0°=Red, 60°=Yellow, 120°=Green, 180°=Cyan, 240°=Blue, 300°=Magenta.',challenge:'Drag the outer ring to approximately 120° (green).',check:c=>Math.abs(c.h-120)<18&&c.s>50,success:'Correct! 120° is the green primary — the triadic partner of red and blue.',hint:'Drag the outer ring handle to the right side of the wheel.'},
-  {key:'saturation',title:'Saturation',icon:'🎨',level:2,desc:'Saturation controls color purity. 100% = vivid and pure. 0% = grey.',challenge:'Max out saturation above 90%.',check:c=>c.s>90,success:'Vivid and pure! High saturation = maximum chromatic intensity.',hint:'Move the handle toward the pure-hue vertex (tip toward the ring).'},
-  {key:'lightness',title:'Lightness',icon:'☀',level:2,desc:'Lightness: 0%=black, 100%=white, 50%=full color. Pastels have high lightness with moderate saturation.',challenge:'Create a pastel: lightness above 72%.',check:c=>c.l>72,success:'Beautiful pastel! High lightness softens colors.',hint:'Move the triangle handle toward the white vertex.'},
-  {key:'complementary',title:'Complementary',icon:'⚡',level:3,desc:'Complementary colors are exactly 180° apart on the wheel. Maximum contrast, maximum visual tension.',challenge:'Current base is orange (30°). Find its complement near 210°.',check:c=>Math.abs(c.h-210)<22&&c.s>50,success:'Yes! 30° and 210° are complementary.',hint:'Drag the ring handle to the opposite side — 180° away from 30°.'},
-  {key:'triadic',title:'Triadic Colors',icon:'△',level:3,desc:'Three hues evenly spaced at 120° intervals.',challenge:'Find the third triadic partner of red (0°) and green (120°) — blue at 240°.',check:c=>Math.abs(c.h-240)<20&&c.s>55,success:'Blue! 0°+120°+240° = RGB triad.',hint:'Blue sits at 240° — the bottom-left area of the wheel.'},
-  {key:'warm_cool',title:'Warm vs Cool',icon:'🌡',level:2,desc:'Warm (0°–90°): energetic. Cool (150°–300°): calming, professional.',challenge:'Create a deeply cool blue-violet between 230°–270°.',check:c=>c.h>=225&&c.h<=275&&c.s>55,success:'Cool and professional! This range conveys trust and calm.',hint:'Drag the ring to the lower-left arc of the wheel.'},
-  {key:'wcag',title:'Accessibility Contrast',icon:'♿',level:4,desc:'WCAG 2.1 requires minimum 4.5:1 contrast ratio for normal text (AA). 7:1 for AAA.',challenge:'Pick a color achieving at least 4.5:1 contrast ratio against white.',check:c=>{const r=contrastRatio(hslToRgb(c.h,c.s,c.l),{r:255,g:255,b:255});return r>=4.5},success:'This color passes WCAG AA — accessible as foreground text on white.',hint:'Darker colors achieve higher contrast. Try lightness below 38%.'},
+  {key:'achromatic',title:'Achromatic Colors',icon:'◻',level:1,
+   tag:'FOUNDATION',tagColor:'#9999cc',
+   desc:'Colors with zero saturation — pure blacks, whites, and greys. Saturation = 0% removes all hue entirely.',
+   deeper:'In design, achromatic palettes create visual breathing room. They balance vivid accent colors and are foundational to understanding how saturation actually works.',
+   funFact:'The word "achromatic" comes from Greek — "a" (without) + "chroma" (color). Ancient Greek and Japanese ink-wash art (sumi-e) used only black and grey to create masterpieces.',
+   keywords:['Neutral','No Hue','Grayscale'],
+   examples:[{h:0,s:0,l:20,label:'Black'},{h:0,s:0,l:50,label:'Grey'},{h:0,s:0,l:85,label:'Near White'},{h:0,s:0,l:100,label:'White'}],
+   challenge:'Remove all color: drag the triangle handle to zero saturation.',
+   check:c=>c.s<10,
+   success:'Perfect! Zero saturation makes hue irrelevant — pure neutral tone.',
+   hint:'Move the SV handle left inside the triangle.',
+   quiz:[
+     {q:'What happens to a color when saturation reaches 0%?',opts:['The hue rotates to 0° (red)','All hue disappears — it becomes grey','Lightness resets to 50%','The color becomes black'],a:1},
+     {q:'Which HSL value represents an achromatic color?',opts:['H:0° S:80% L:50%','H:120° S:0% L:50%','H:240° S:60% L:45%','H:60° S:100% L:70%'],a:1},
+     {q:'Achromatic palettes are used in design primarily for...',opts:['Maximum visual energy','Clean interfaces that avoid visual noise','Warm, inviting brand identities','High-saturation product showcases'],a:1},
+   ]},
+  {key:'hue',title:'Understanding Hue',icon:'🌈',level:1,
+   tag:'FOUNDATION',tagColor:'#9999cc',
+   desc:'Hue is your position on the color wheel: 0°=Red, 60°=Yellow, 120°=Green, 180°=Cyan, 240°=Blue, 300°=Magenta.',
+   deeper:'Hue is the most fundamental property of color. It is measured in degrees (0–360°) because the color spectrum wraps around into a continuous circle — red at 0° and red again at 360°.',
+   funFact:'The human eye can distinguish roughly 10 million colors, but most languages name only 11 basic hue categories. Languages without a word for blue (like ancient Greek) may not perceive it as a distinct category!',
+   keywords:['Angle','Spectrum','Primary'],
+   examples:[{h:0,s:90,l:50,label:'Red 0°'},{h:60,s:90,l:50,label:'Yellow 60°'},{h:120,s:90,l:50,label:'Green 120°'},{h:240,s:90,l:50,label:'Blue 240°'}],
+   challenge:'Drag the outer ring to approximately 120° (green).',
+   check:c=>Math.abs(c.h-120)<18&&c.s>50,
+   success:'Correct! 120° is the green primary — the triadic partner of red and blue.',
+   hint:'Drag the outer ring handle to the right side of the wheel.',
+   quiz:[
+     {q:'What hue angle represents pure Green?',opts:['60°','90°','120°','180°'],a:2},
+     {q:'Which primary hue sits at 0°?',opts:['Blue','Yellow','Cyan','Red'],a:3},
+     {q:'What is the approximate hue of a warm orange?',opts:['15–30°','90–120°','180–210°','270–300°'],a:0},
+   ]},
+  {key:'saturation',title:'Saturation',icon:'🎨',level:2,
+   tag:'PROPERTIES',tagColor:'#44ff88',
+   desc:'Saturation controls color purity. 100% = vivid and pure. 0% = grey.',
+   deeper:'Think of saturation as how much paint you add to water. At 100% there is no dilution — pure vivid color. At 50% the hue is muted but still visible. At 0% only neutral grey remains.',
+   funFact:'Commercial printers use "chroma" (similar to saturation) to calibrate color output. Newspapers traditionally used lower saturation to prevent ink bleeding — that is why old newspapers look so muted.',
+   keywords:['Purity','Vivid','Muted'],
+   examples:[{h:200,s:100,l:50,label:'100% Pure'},{h:200,s:60,l:50,label:'60% Muted'},{h:200,s:20,l:50,label:'20% Pastel'},{h:200,s:0,l:50,label:'0% Grey'}],
+   challenge:'Max out saturation above 90%.',
+   check:c=>c.s>90,
+   success:'Vivid and pure! High saturation = maximum chromatic intensity.',
+   hint:'Move the handle toward the pure-hue vertex (tip toward the ring).',
+   quiz:[
+     {q:'At 100% saturation, the color is...',opts:['Black','White','Pure vivid hue','A neutral grey'],a:2},
+     {q:'A "pastel" color has...',opts:['High saturation + low lightness','Low saturation + high lightness','0% saturation','100% saturation'],a:1},
+     {q:'Reducing saturation makes colors...',opts:['More vivid','Lighter','More muted and grey-like','Darker'],a:2},
+   ]},
+  {key:'lightness',title:'Lightness',icon:'☀',level:2,
+   tag:'PROPERTIES',tagColor:'#44ff88',
+   desc:'Lightness: 0%=black, 100%=white, 50%=full color. Pastels have high lightness with moderate saturation.',
+   deeper:'Lightness controls how much black or white is mixed into your color. At 50% you get the pure hue. Below 50% creates shades (darker). Above 50% creates tints (lighter).',
+   funFact:'Artists have used lightness as a compositional tool for centuries. Rembrandt\'s technique of painting deep blacks with small bright highlights (chiaroscuro) is still taught today.',
+   keywords:['Tint','Shade','Brightness'],
+   examples:[{h:270,s:80,l:15,label:'Shade'},{h:270,s:80,l:35,label:'Dark'},{h:270,s:80,l:50,label:'Pure'},{h:270,s:80,l:80,label:'Tint'}],
+   challenge:'Create a pastel: lightness above 72%.',
+   check:c=>c.l>72,
+   success:'Beautiful pastel! High lightness softens colors.',
+   hint:'Move the triangle handle toward the white vertex.',
+   quiz:[
+     {q:'At 0% lightness, the color is...',opts:['White','Grey','The pure hue','Black'],a:3},
+     {q:'What lightness produces the most vivid, saturated appearance?',opts:['0%','25%','50%','100%'],a:2},
+     {q:'A "tint" is created by...',opts:['Reducing saturation','Increasing lightness beyond 50%','Decreasing hue angle','Adding cyan to the mix'],a:1},
+   ]},
+  {key:'complementary',title:'Complementary',icon:'⚡',level:3,
+   tag:'HARMONY',tagColor:'#7c6fff',
+   desc:'Complementary colors are exactly 180° apart on the wheel. Maximum contrast, maximum visual tension.',
+   deeper:'Complementary pairs create the highest contrast of any two-color combination. When placed next to each other, each color appears more vivid — a phenomenon called simultaneous contrast.',
+   funFact:'Impressionist painters like Monet deliberately placed complementary colors next to each other to make them appear more vibrant. Look for orange and blue, or red and green, in his water lily paintings.',
+   keywords:['180° Apart','Contrast','Tension'],
+   examples:[{h:0,s:85,l:52,label:'Red'},{h:180,s:85,l:52,label:'Cyan (comp)'},{h:270,s:75,l:52,label:'Purple'},{h:90,s:75,l:52,label:'Lime (comp)'}],
+   challenge:'Current base is orange (30°). Find its complement near 210°.',
+   check:c=>Math.abs(c.h-210)<22&&c.s>50,
+   success:'Yes! 30° and 210° are complementary.',
+   hint:'Drag the ring handle to the opposite side — 180° away from 30°.',
+   quiz:[
+     {q:'Complementary colors are how many degrees apart?',opts:['60°','90°','120°','180°'],a:3},
+     {q:'The complement of Blue (240°) is closest to...',opts:['Red (0°)','Green (120°)','Yellow (60°)','Orange (30°)'],a:2},
+     {q:'Complementary color pairs create...',opts:['A soft, natural harmony','Maximum visual contrast','Earthy, muted tones','A triadic relationship'],a:1},
+   ]},
+  {key:'triadic',title:'Triadic Colors',icon:'△',level:3,
+   tag:'HARMONY',tagColor:'#7c6fff',
+   desc:'Three hues evenly spaced at 120° intervals.',
+   deeper:'Triadic schemes offer vibrant, balanced palettes. They are popular in children\'s media and bold branding because the three colors fight for attention equally — no single hue dominates.',
+   funFact:'The RGB model (Red, Green, Blue) used in all digital screens is a triadic color system. Your monitor mixes these three primaries at 0°, 120°, 240° to produce every color you see.',
+   keywords:['120° Apart','Three Colors','Vibrant'],
+   examples:[{h:0,s:85,l:52,label:'Red 0°'},{h:120,s:85,l:52,label:'Green 120°'},{h:240,s:85,l:52,label:'Blue 240°'}],
+   challenge:'Find the third triadic partner of red (0°) and green (120°) — blue at 240°.',
+   check:c=>Math.abs(c.h-240)<20&&c.s>55,
+   success:'Blue! 0°+120°+240° = RGB triad.',
+   hint:'Blue sits at 240° — the bottom-left area of the wheel.',
+   quiz:[
+     {q:'Triadic colors are spaced how many degrees apart?',opts:['60°','90°','120°','180°'],a:2},
+     {q:'Red (0°), Green (120°), Blue (240°) form what type of harmony?',opts:['Split-complement','Analogous trio','Complementary pair','Triadic / Primary triad'],a:3},
+     {q:'Triadic palettes are best used when you want...',opts:['Subtle, natural harmony','Bold contrast balanced across three hues','Monochromatic variations','Achromatic neutrality'],a:1},
+   ]},
+  {key:'warm_cool',title:'Warm vs Cool',icon:'🌡',level:2,
+   tag:'PROPERTIES',tagColor:'#44ff88',
+   desc:'Warm (0°–90°): energetic. Cool (150°–300°): calming, professional.',
+   deeper:'Color temperature influences mood and perception profoundly. Warm colors advance (appear closer), while cool colors recede (appear further). Interior designers exploit this to make rooms feel cozy or spacious.',
+   funFact:'Studies show warm-colored restaurants see faster customer turnover — diners eat quicker in red interiors. Cool-colored rooms make people perceive time more slowly.',
+   keywords:['Temperature','Mood','Perception'],
+   examples:[{h:10,s:90,l:52,label:'Warm Red'},{h:40,s:90,l:52,label:'Warm Orange'},{h:200,s:80,l:52,label:'Cool Cyan'},{h:250,s:80,l:52,label:'Cool Blue'}],
+   challenge:'Create a deeply cool blue-violet between 230°–270°.',
+   check:c=>c.h>=225&&c.h<=275&&c.s>55,
+   success:'Cool and professional! This range conveys trust and calm.',
+   hint:'Drag the ring to the lower-left arc of the wheel.',
+   quiz:[
+     {q:'Which hue range is considered "warm"?',opts:['150°–300°','0°–90°','90°–150°','270°–360°'],a:1},
+     {q:'Cool colors are typically associated with...',opts:['Urgency and passion','Calm, trust, and professionalism','Playfulness and joy','Mystery and luxury'],a:1},
+     {q:'A yellow-green at 80° is considered...',opts:['Cool','Warm','Neutral','Achromatic'],a:1},
+   ]},
+  {key:'wcag',title:'Accessibility Contrast',icon:'♿',level:4,
+   tag:'ADVANCED',tagColor:'#3ecfef',
+   desc:'WCAG 2.1 requires minimum 4.5:1 contrast ratio for normal text (AA). 7:1 for AAA.',
+   deeper:'Approximately 1 in 12 men and 1 in 200 women have color vision deficiency. WCAG contrast ratios ensure your text remains readable for all users, regardless of visual ability.',
+   funFact:'The contrast ratio formula was developed based on how the human eye perceives luminance differences. It is not linear — our eyes are more sensitive to the green spectrum, which is why green is weighted most heavily in the calculation.',
+   keywords:['WCAG','Contrast','Accessibility'],
+   examples:[{h:240,s:70,l:25,label:'AA ✓'},{h:0,s:70,l:28,label:'AA ✓'},{h:120,s:60,l:28,label:'AA ✓'},{h:60,s:80,l:55,label:'Fail ✗'}],
+   challenge:'Pick a color achieving at least 4.5:1 contrast ratio against white.',
+   check:c=>{const r=contrastRatio(hslToRgb(c.h,c.s,c.l),{r:255,g:255,b:255});return r>=4.5},
+   success:'This color passes WCAG AA — accessible as foreground text on white.',
+   hint:'Darker colors achieve higher contrast. Try lightness below 38%.',
+   quiz:[
+     {q:'WCAG AA requires what minimum contrast ratio for normal text?',opts:['3:1','4.5:1','7:1','2:1'],a:1},
+     {q:'Which lightness range typically achieves 4.5:1 contrast vs white?',opts:['60–80%','40–55%','Below 38%','85–95%'],a:2},
+     {q:'WCAG AAA (enhanced) requires a contrast ratio of at least...',opts:['4.5:1','5.5:1','7:1','10:1'],a:2},
+   ]},
 ];
 
+// ── LEARN DIAGRAM: SVG concept visualizers ──
+function LearnDiagram({moduleKey,C,size=200}){
+  const s=size,cx=s/2,cy=s/2,r=s*0.38;
+  const ring=hues=>{
+    return hues.map((h,i)=>{
+      const a=(h-90)*Math.PI/180;
+      return{x:cx+r*Math.cos(a),y:cy+r*Math.sin(a),h};
+    });
+  };
+  if(moduleKey==='hue'){
+    const labels=[{h:0,label:'Red'},{h:60,label:'Yellow'},{h:120,label:'Green'},{h:180,label:'Cyan'},{h:240,label:'Blue'},{h:300,label:'Magenta'}];
+    const segs=Array.from({length:360},(_,i)=>i);
+    return<svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{display:'block',margin:'0 auto'}}>
+      {segs.map(i=>{
+        const a0=(i-90)*Math.PI/180,a1=(i+1-90)*Math.PI/180;
+        const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+        const io=r-12,xi0=cx+io*Math.cos(a0),yi0=cy+io*Math.sin(a0),xi1=cx+io*Math.cos(a1),yi1=cy+io*Math.sin(a1);
+        return<path key={i} d={`M${x0},${y0} A${r},${r} 0 0,1 ${x1},${y1} L${xi1},${yi1} A${io},${io} 0 0,0 ${xi0},${yi0} Z`} fill={`hsl(${i},90%,55%)`}/>;
+      })}
+      {labels.map(({h,label})=>{
+        const a=(h-90)*Math.PI/180,lr=r+16;
+        return<g key={h}>
+          <line x1={cx+(r-13)*Math.cos(a)} y1={cy+(r-13)*Math.sin(a)} x2={cx+(r+3)*Math.cos(a)} y2={cy+(r+3)*Math.sin(a)} stroke="rgba(255,255,255,.8)" strokeWidth={1.5}/>
+          <text x={cx+lr*Math.cos(a)} y={cy+lr*Math.sin(a)} textAnchor="middle" dominantBaseline="middle" fill={`hsl(${h},85%,70%)`} fontSize={8} fontFamily="JetBrains Mono">{label}</text>
+          <text x={cx+lr*Math.cos(a)} y={cy+lr*Math.sin(a)+10} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,.4)" fontSize={7} fontFamily="JetBrains Mono">{h}°</text>
+        </g>;
+      })}
+      <circle cx={cx} cy={cy} r={20} fill={C.bgCard}/>
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill={C.textMuted} fontSize={7} fontFamily="JetBrains Mono">HUE</text>
+    </svg>;
+  }
+  if(moduleKey==='saturation'){
+    const vals=[100,75,50,25,0];
+    return<svg width={s} height={60} viewBox={`0 0 ${s} 60`} style={{display:'block',margin:'0 auto'}}>
+      {vals.map((sv,i)=>{
+        const w=s/5-4,x=i*(s/5)+2;
+        return<g key={sv}>
+          <rect x={x} y={4} width={w} height={36} rx={5} fill={`hsl(210,${sv}%,52%)`}/>
+          <text x={x+w/2} y={50} textAnchor="middle" fill={C.textMuted} fontSize={7.5} fontFamily="JetBrains Mono">{sv}%</text>
+        </g>;
+      })}
+      <text x={0} y={58} fill={C.textMuted} fontSize={7} fontFamily="Syne">Vivid</text>
+      <text x={s} y={58} textAnchor="end" fill={C.textMuted} fontSize={7} fontFamily="Syne">Grey</text>
+    </svg>;
+  }
+  if(moduleKey==='lightness'){
+    const vals=[10,25,50,75,90];
+    return<svg width={s} height={60} viewBox={`0 0 ${s} 60`} style={{display:'block',margin:'0 auto'}}>
+      {vals.map((lv,i)=>{
+        const w=s/5-4,x=i*(s/5)+2;
+        return<g key={lv}>
+          <rect x={x} y={4} width={w} height={36} rx={5} fill={`hsl(270,75%,${lv}%)`}/>
+          <text x={x+w/2} y={50} textAnchor="middle" fill={C.textMuted} fontSize={7.5} fontFamily="JetBrains Mono">{lv}%</text>
+        </g>;
+      })}
+      <text x={0} y={58} fill={C.textMuted} fontSize={7} fontFamily="Syne">Shade</text>
+      <text x={s} y={58} textAnchor="end" fill={C.textMuted} fontSize={7} fontFamily="Syne">Tint</text>
+    </svg>;
+  }
+  if(moduleKey==='achromatic'){
+    const vals=[0,15,35,65,85,100];
+    return<svg width={s} height={60} viewBox={`0 0 ${s} 60`} style={{display:'block',margin:'0 auto'}}>
+      {vals.map((lv,i)=>{
+        const w=s/6-3,x=i*(s/6)+1;
+        return<rect key={lv} x={x} y={4} width={w} height={40} rx={5} fill={`hsl(0,0%,${lv}%)`} stroke="rgba(255,255,255,.06)" strokeWidth={1}/>;
+      })}
+      <text x={0} y={58} fill={C.textMuted} fontSize={7} fontFamily="Syne">Black</text>
+      <text x={s} y={58} textAnchor="end" fill={C.textMuted} fontSize={7} fontFamily="Syne">White</text>
+    </svg>;
+  }
+  if(moduleKey==='complementary'){
+    const ra=r*0.82,c1={x:cx+ra,y:cy},c2={x:cx-ra,y:cy};
+    return<svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{display:'block',margin:'0 auto'}}>
+      {Array.from({length:360},(_,i)=>i).map(i=>{
+        const a0=(i-90)*Math.PI/180,a1=(i+1-90)*Math.PI/180;
+        const ro=r,ri=r-14;
+        const x0=cx+ro*Math.cos(a0),y0=cy+ro*Math.sin(a0),x1=cx+ro*Math.cos(a1),y1=cy+ro*Math.sin(a1);
+        const xi0=cx+ri*Math.cos(a0),yi0=cy+ri*Math.sin(a0),xi1=cx+ri*Math.cos(a1),yi1=cy+ri*Math.sin(a1);
+        return<path key={i} d={`M${x0},${y0} A${ro},${ro} 0 0,1 ${x1},${y1} L${xi1},${yi1} A${ri},${ri} 0 0,0 ${xi0},${yi0} Z`} fill={`hsl(${i},85%,52%)`} opacity={0.7}/>;
+      })}
+      <line x1={cx-ra} y1={cy} x2={cx+ra} y2={cy} stroke="rgba(255,255,255,.7)" strokeWidth={1.5} strokeDasharray="4,3"/>
+      <circle cx={cx+ra} cy={cy} r={10} fill="hsl(30,90%,55%)" stroke="#fff" strokeWidth={2}/>
+      <circle cx={cx-ra} cy={cy} r={10} fill="hsl(210,90%,55%)" stroke="#fff" strokeWidth={2}/>
+      <text x={cx+ra} y={cy+22} textAnchor="middle" fill="hsl(30,90%,75%)" fontSize={8} fontFamily="JetBrains Mono">30°</text>
+      <text x={cx-ra} y={cy+22} textAnchor="middle" fill="hsl(210,90%,75%)" fontSize={8} fontFamily="JetBrains Mono">210°</text>
+      <text x={cx} y={cy-r-6} textAnchor="middle" fill="rgba(255,255,255,.4)" fontSize={7} fontFamily="Syne">180° apart</text>
+    </svg>;
+  }
+  if(moduleKey==='triadic'){
+    const ra=r*0.82;
+    const pts=[0,120,240].map(h=>{const a=(h-90)*Math.PI/180;return{x:cx+ra*Math.cos(a),y:cy+ra*Math.sin(a),h};});
+    return<svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{display:'block',margin:'0 auto'}}>
+      {Array.from({length:360},(_,i)=>i).map(i=>{
+        const a0=(i-90)*Math.PI/180,a1=(i+1-90)*Math.PI/180;
+        const ro=r,ri=r-14;
+        const x0=cx+ro*Math.cos(a0),y0=cy+ro*Math.sin(a0),x1=cx+ro*Math.cos(a1),y1=cy+ro*Math.sin(a1);
+        const xi0=cx+ri*Math.cos(a0),yi0=cy+ri*Math.sin(a0),xi1=cx+ri*Math.cos(a1),yi1=cy+ri*Math.sin(a1);
+        return<path key={i} d={`M${x0},${y0} A${ro},${ro} 0 0,1 ${x1},${y1} L${xi1},${yi1} A${ri},${ri} 0 0,0 ${xi0},${yi0} Z`} fill={`hsl(${i},85%,52%)`} opacity={0.7}/>;
+      })}
+      <polygon points={pts.map(p=>`${p.x},${p.y}`).join(' ')} fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.65)" strokeWidth={1.5}/>
+      {pts.map(({x,y,h})=><g key={h}>
+        <circle cx={x} cy={y} r={10} fill={`hsl(${h},90%,55%)`} stroke="#fff" strokeWidth={2}/>
+        <text x={x} y={y+(y>cy?20:-12)} textAnchor="middle" fill={`hsl(${h},80%,72%)`} fontSize={8} fontFamily="JetBrains Mono">{h}°</text>
+      </g>)}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,.3)" fontSize={7} fontFamily="Syne">120°</text>
+    </svg>;
+  }
+  if(moduleKey==='warm_cool'){
+    return<svg width={s} height={s*0.6} viewBox={`0 0 ${s} ${s*0.6}`} style={{display:'block',margin:'0 auto'}}>
+      <defs>
+        <linearGradient id="wc_grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          {[0,30,60,90,120,150,180,210,240,270,300,330,360].map((h,i,arr)=>(
+            <stop key={h} offset={`${(h/360)*100}%`} stopColor={`hsl(${h},88%,55%)`}/>
+          ))}
+        </linearGradient>
+      </defs>
+      <rect x={0} y={10} width={s} height={30} rx={8} fill="url(#wc_grad)"/>
+      <rect x={0} y={10} width={s*0.25+1} height={30} rx={0} fill="transparent" stroke="rgba(255,160,80,.9)" strokeWidth={2} strokeDasharray="0"/>
+      <rect x={0} y={10} width={s*0.25} height={30} rx={0} fill="rgba(255,120,40,.12)"/>
+      <text x={s*0.125} y={8} textAnchor="middle" fill="#ff9944" fontSize={8} fontFamily="Syne" fontWeight="700">WARM</text>
+      <text x={s*0.125} y={50} textAnchor="middle" fill="#ff9944" fontSize={7} fontFamily="JetBrains Mono">0°–90°</text>
+      <rect x={s*0.4167} y={10} width={s*0.4167} height={30} rx={0} fill="rgba(80,160,255,.12)" stroke="rgba(80,160,255,.9)" strokeWidth={2}/>
+      <text x={s*0.625} y={8} textAnchor="middle" fill="#3ecfef" fontSize={8} fontFamily="Syne" fontWeight="700">COOL</text>
+      <text x={s*0.625} y={50} textAnchor="middle" fill="#3ecfef" fontSize={7} fontFamily="JetBrains Mono">150°–300°</text>
+    </svg>;
+  }
+  if(moduleKey==='wcag'){
+    const ratios=[{r:1.5,label:'1.5:1',pass:false,note:'Fail'},{r:3,label:'3:1',pass:'partial',note:'AA Lg'},{r:4.5,label:'4.5:1',pass:true,note:'AA'},{r:7,label:'7:1',pass:'aaa',note:'AAA'}];
+    return<svg width={s} height={80} viewBox={`0 0 ${s} 80`} style={{display:'block',margin:'0 auto'}}>
+      <defs>
+        <linearGradient id="wcag_grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#ff5533"/>
+          <stop offset="30%" stopColor="#ffcc44"/>
+          <stop offset="55%" stopColor="#44ff88"/>
+          <stop offset="100%" stopColor="#3ecfef"/>
+        </linearGradient>
+      </defs>
+      <rect x={0} y={20} width={s} height={12} rx={6} fill="url(#wcag_grad)"/>
+      {ratios.map(({r,label,note},i)=>{
+        const x=i===0?8:i===1?s*0.3:i===2?s*0.55:s*0.85;
+        const col=i===0?'#ff5533':i===1?'#ffcc44':i===2?'#44ff88':'#3ecfef';
+        return<g key={label}>
+          <line x1={x} y1={18} x2={x} y2={34} stroke={col} strokeWidth={1.5}/>
+          <text x={x} y={14} textAnchor="middle" fill={col} fontSize={7.5} fontFamily="JetBrains Mono">{label}</text>
+          <text x={x} y={46} textAnchor="middle" fill={col} fontSize={8} fontFamily="Syne" fontWeight="700">{note}</text>
+        </g>;
+      })}
+      <text x={0} y={62} fill={C.textMuted} fontSize={7} fontFamily="Syne">Low contrast</text>
+      <text x={s} y={62} textAnchor="end" fill={C.textMuted} fontSize={7} fontFamily="Syne">High contrast</text>
+    </svg>;
+  }
+  // default diagram: color ring
+  return<svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{display:'block',margin:'0 auto'}}>
+    {Array.from({length:360},(_,i)=>i).map(i=>{
+      const a0=(i-90)*Math.PI/180,a1=(i+1-90)*Math.PI/180;
+      const ro=r,ri=r-18;
+      const x0=cx+ro*Math.cos(a0),y0=cy+ro*Math.sin(a0),x1=cx+ro*Math.cos(a1),y1=cy+ro*Math.sin(a1);
+      const xi0=cx+ri*Math.cos(a0),yi0=cy+ri*Math.sin(a0),xi1=cx+ri*Math.cos(a1),yi1=cy+ri*Math.sin(a1);
+      return<path key={i} d={`M${x0},${y0} A${ro},${ro} 0 0,1 ${x1},${y1} L${xi1},${yi1} A${ri},${ri} 0 0,0 ${xi0},${yi0} Z`} fill={`hsl(${i},88%,55%)`}/>;
+    })}
+  </svg>;
+}
+
+// ── LEARN QUIZ PHASE ──
+function QuizPhase({mod,onDone,C}){
+  const[idx,setIdx]=useState(0);
+  const[sel,setSel]=useState(null);
+  const[confirmed,setConfirmed]=useState(false);
+  const[answers,setAnswers]=useState([]);
+  const[finished,setFinished]=useState(false);
+
+  const q=mod.quiz[idx];
+  const isRight=confirmed&&sel===q.a;
+  const isWrong=confirmed&&sel!==q.a;
+
+  const confirm=()=>{
+    if(sel===null)return;
+    setConfirmed(true);
+    const newAnswers=[...answers,{correct:sel===q.a,selected:sel,answer:q.a}];
+    setAnswers(newAnswers);
+    if(idx===mod.quiz.length-1){
+      setTimeout(()=>setFinished(true),900);
+    }else{
+      setTimeout(()=>{setIdx(i=>i+1);setSel(null);setConfirmed(false)},900);
+    }
+  };
+
+  if(finished){
+    const score=answers.filter(a=>a.correct).length;
+    const pct=Math.round((score/mod.quiz.length)*100);
+    return<div style={{animation:'fadeIn .3s ease',display:'flex',flexDirection:'column',alignItems:'center',gap:16,padding:'8px 0'}}>
+      <div style={{fontSize:48,animation:'starPop .5s ease both'}}>{pct===100?'🏆':pct>=67?'⭐':'💡'}</div>
+      <div style={{fontSize:20,fontWeight:800,color:C.textPrimary}}>{pct===100?'Perfect Score!':pct>=67?'Well Done!':'Keep Practicing!'}</div>
+      <div style={{display:'flex',gap:8}}>
+        {answers.map((a,i)=>(
+          <div key={i} style={{width:36,height:36,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,
+            background:a.correct?'rgba(61,255,160,.18)':'rgba(255,85,51,.14)',
+            border:`1px solid ${a.correct?'rgba(61,255,160,.5)':'rgba(255,85,51,.4)'}`}}>
+            {a.correct?'✓':'✗'}
+          </div>
+        ))}
+      </div>
+      <div style={{color:C.textSecondary,fontSize:13}}>{score}/{mod.quiz.length} correct</div>
+      <button onClick={()=>onDone(pct)} style={{marginTop:8,background:`linear-gradient(135deg,${C.accent},${C.accentAlt})`,border:'none',borderRadius:10,padding:'12px 28px',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'inherit',letterSpacing:'.07em'}}>
+        Continue →
+      </button>
+    </div>;
+  }
+
+  return<div style={{animation:'fadeIn .25s ease'}}>
+    {/* Question counter */}
+    <div style={{display:'flex',gap:4,marginBottom:16}}>
+      {mod.quiz.map((_,i)=>(
+        <div key={i} style={{flex:1,height:3,borderRadius:2,background:i<idx?C.accent:i===idx?C.accentAlt:C.border,transition:'background .3s'}}/>
+      ))}
+    </div>
+    <div style={{fontSize:10,letterSpacing:2,color:C.textMuted,marginBottom:8}}>QUESTION {idx+1} OF {mod.quiz.length}</div>
+    <p style={{fontSize:15,fontWeight:600,color:C.textPrimary,lineHeight:1.55,marginBottom:20}}>{q.q}</p>
+    <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+      {q.opts.map((opt,i)=>{
+        let bg=C.bgCard,border=C.border,col=C.textSecondary;
+        if(sel===i&&!confirmed){bg=`${C.accent}22`;border=C.accent;col=C.textPrimary}
+        if(confirmed&&i===q.a){bg='rgba(61,255,160,.14)';border='rgba(61,255,160,.7)';col=C.success}
+        if(confirmed&&sel===i&&i!==q.a){bg='rgba(255,85,51,.12)';border='rgba(255,85,51,.6)';col=C.error}
+        return<button key={i} onClick={()=>{if(!confirmed)setSel(i)}}
+          style={{background:bg,border:`1px solid ${border}`,borderRadius:10,padding:'11px 15px',textAlign:'left',cursor:confirmed?'default':'pointer',
+            color:col,fontSize:13,lineHeight:1.5,fontFamily:'inherit',fontWeight:sel===i?600:400,
+            transition:'all .18s ease',display:'flex',alignItems:'center',gap:10}}>
+          <span style={{width:20,height:20,borderRadius:5,border:`1px solid ${border}`,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:9,flexShrink:0,
+            background:confirmed&&i===q.a?'rgba(61,255,160,.3)':confirmed&&sel===i&&i!==q.a?'rgba(255,85,51,.25)':'transparent'}}>
+            {confirmed&&i===q.a?'✓':confirmed&&sel===i&&i!==q.a?'✗':String.fromCharCode(65+i)}
+          </span>
+          {opt}
+        </button>;
+      })}
+    </div>
+    {!confirmed&&<button onClick={confirm} disabled={sel===null}
+      style={{background:sel!==null?`linear-gradient(135deg,${C.accent},${C.accentAlt})`:'rgba(255,255,255,.08)',border:'none',borderRadius:10,
+        padding:'11px 22px',color:sel!==null?'#fff':C.textMuted,fontWeight:700,fontSize:13,cursor:sel!==null?'pointer':'not-allowed',fontFamily:'inherit',letterSpacing:'.07em',
+        opacity:sel===null?.5:1,transition:'all .18s'}}>
+      CHECK ANSWER
+    </button>}
+    {confirmed&&<div style={{padding:'10px 14px',borderRadius:8,background:isRight?'rgba(61,255,160,.12)':'rgba(255,85,51,.1)',border:`1px solid ${isRight?C.success+'44':C.error+'44'}`,fontSize:12,color:isRight?C.success:C.error,animation:'fadeIn .2s ease'}}>
+      {isRight?'✓ Correct!':'✗ Not quite — the correct answer is highlighted above.'}
+    </div>}
+  </div>;
+}
+
+// ── HOVERTOOLTIP for wheel area ──
+function WheelHoverTooltip({containerRef,C}){
+  const[pos,setPos]=useState(null);
+  const[hue,setHue]=useState(0);
+  const HUE_NAMES=['Red','Rose','Crimson','Scarlet','Vermilion','Orange-Red','Orange','Amber','Gold','Yellow-Orange','Yellow','Yellow-Green','Lime','Green-Yellow','Green','Spring Green','Emerald','Mint','Cyan-Green','Cyan','Sky Blue','Azure','Cerulean','Cornflower','Blue','Indigo','Blue-Violet','Violet','Purple','Magenta','Pink','Hot Pink'];
+  const getHueName=h=>{const i=Math.round(h/11.25)%32;return HUE_NAMES[i]||'Color'};
+  useEffect(()=>{
+    const el=containerRef.current;if(!el)return;
+    const onMove=e=>{
+      const rect=el.getBoundingClientRect();
+      const src=e.touches?e.touches[0]:e;
+      const x=src.clientX-rect.left,y=src.clientY-rect.top;
+      const cx=rect.width/2,cy=rect.height/2;
+      const d=Math.sqrt((x-cx)**2+(y-cy)**2);
+      const outerR=rect.width*0.47,innerR=outerR*0.86;
+      if(d>innerR*0.9&&d<outerR*1.1){
+        const h=(((Math.atan2(y-cy,x-cx)/(Math.PI/180))+90)%360+360)%360;
+        setHue(h);setPos({x:src.clientX-rect.left,y:src.clientY-rect.top});
+      }else setPos(null);
+    };
+    const onLeave=()=>setPos(null);
+    el.addEventListener('mousemove',onMove);el.addEventListener('mouseleave',onLeave);
+    el.addEventListener('touchmove',onMove);el.addEventListener('touchend',onLeave);
+    return()=>{el.removeEventListener('mousemove',onMove);el.removeEventListener('mouseleave',onLeave);el.removeEventListener('touchmove',onMove);el.removeEventListener('touchend',onLeave)};
+  },[containerRef]);
+  if(!pos)return null;
+  return<div style={{position:'absolute',left:pos.x+12,top:pos.y-12,background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:8,padding:'4px 10px',pointerEvents:'none',zIndex:10,display:'flex',alignItems:'center',gap:6,fontSize:11,color:C.textSecondary,whiteSpace:'nowrap',boxShadow:'0 4px 14px rgba(0,0,0,.4)'}}>
+    <div style={{width:10,height:10,borderRadius:'50%',background:`hsl(${hue},88%,55%)`,flexShrink:0}}/>
+    <span style={{fontFamily:'JetBrains Mono',color:`hsl(${hue},80%,70%)`}}>{getHueName(hue)}</span>
+    <span style={{color:C.textMuted}}>{Math.round(hue)}°</span>
+  </div>;
+}
+
+// ── LEARN OVERVIEW SCREEN ──
+function LearnOverview({modules,completed,onSelect,C}){
+  const[filter,setFilter]=useState('all');
+  const total=modules.length,done=completed.size;
+  const pct=total?Math.round((done/total)*100):0;
+  const r=26,sw=5,circ=2*Math.PI*r;
+  const byLevel=[1,2,3,4].map(l=>modules.filter(m=>m.level===l));
+  const levelMeta=[
+    {label:'Foundation',color:'#9999cc',desc:'Core properties of color'},
+    {label:'Properties',color:'#44ff88',desc:'Saturation, lightness & temp'},
+    {label:'Harmony',color:'#7c6fff',desc:'Color relationships'},
+    {label:'Advanced',color:'#3ecfef',desc:'Accessibility & professional use'},
+  ];
+  const filtered=filter==='all'?modules:filter==='mastered'?modules.filter(m=>completed.has(m.key)):modules.filter(m=>!completed.has(m.key));
+
+  return<div style={{animation:'fadeIn .28s ease'}}>
+    {/* Header strip */}
+    <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:24,padding:'16px 18px',background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:16}}>
+      <div style={{position:'relative',flexShrink:0}}>
+        <svg width={66} height={66}>
+          <circle cx={33} cy={33} r={r} fill="none" stroke={C.border} strokeWidth={sw}/>
+          <circle cx={33} cy={33} r={r} fill="none" stroke={C.accent} strokeWidth={sw}
+            strokeDasharray={`${circ*(pct/100)} ${circ}`} strokeDashoffset={circ/4}
+            strokeLinecap="round" style={{transition:'stroke-dasharray .6s ease'}}/>
+          <text x={33} y={30} textAnchor="middle" dominantBaseline="middle" fill={C.textPrimary} fontSize={13} fontWeight={800} fontFamily="JetBrains Mono">{pct}%</text>
+          <text x={33} y={44} textAnchor="middle" dominantBaseline="middle" fill={C.textMuted} fontSize={7} fontFamily="Syne" letterSpacing={1}>DONE</text>
+        </svg>
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:18,fontWeight:800,color:C.textPrimary,marginBottom:3}}>Color Theory</div>
+        <div style={{fontSize:12,color:C.textSecondary,marginBottom:8}}>{done} of {total} concepts mastered</div>
+        <div style={{height:4,background:C.border,borderRadius:2,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${pct}%`,background:`linear-gradient(90deg,${C.accent},${C.accentAlt})`,borderRadius:2,transition:'width .5s ease'}}/>
+        </div>
+      </div>
+      <div style={{textAlign:'right',flexShrink:0}}>
+        <div style={{fontSize:28,lineHeight:1}}>📚</div>
+        <div style={{fontSize:9,color:C.textMuted,letterSpacing:2,marginTop:4}}>LEARN</div>
+      </div>
+    </div>
+
+    {/* Filter tabs */}
+    <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
+      {[['all','All Concepts'],['remaining','Remaining'],['mastered','Mastered']].map(([key,label])=>(
+        <button key={key} onClick={()=>setFilter(key)}
+          style={{background:filter===key?`${C.accent}22`:'transparent',border:`1px solid ${filter===key?C.accent:C.border}`,borderRadius:20,padding:'5px 14px',color:filter===key?C.accent:C.textSecondary,fontSize:11,fontWeight:filter===key?700:400,cursor:'pointer',fontFamily:'inherit',transition:'all .18s',letterSpacing:'.04em'}}>
+          {label}
+          <span style={{marginLeft:5,fontSize:9,color:filter===key?C.accent:C.textMuted,background:C.bgSecondary,borderRadius:10,padding:'1px 6px'}}>
+            {key==='all'?total:key==='mastered'?done:total-done}
+          </span>
+        </button>
+      ))}
+    </div>
+
+    {/* Level groups */}
+    {byLevel.map((mods,li)=>{
+      const lvMods=filter==='all'?mods:filter==='mastered'?mods.filter(m=>completed.has(m.key)):mods.filter(m=>!completed.has(m.key));
+      if(!lvMods.length)return null;
+      const meta=levelMeta[li];
+      const lvDone=mods.filter(m=>completed.has(m.key)).length;
+      return<div key={li} style={{marginBottom:28}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+          <div style={{height:3,width:20,background:meta.color,borderRadius:2}}/>
+          <div>
+            <span style={{fontSize:10,fontWeight:800,letterSpacing:3,color:meta.color,textTransform:'uppercase'}}>Level {li+1} — {meta.label}</span>
+            <span style={{fontSize:10,color:C.textMuted,marginLeft:8}}>{meta.desc}</span>
+          </div>
+          <div style={{marginLeft:'auto',fontSize:9,color:C.textMuted,fontFamily:'JetBrains Mono'}}>{lvDone}/{mods.length}</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10}}>
+          {lvMods.map(m=>{
+            const idx=modules.findIndex(x=>x.key===m.key);
+            const isDone=completed.has(m.key);
+            return<button key={m.key} onClick={()=>onSelect(idx)}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow=`0 8px 24px rgba(0,0,0,.35)`;e.currentTarget.style.borderColor=isDone?`${meta.color}66`:`${C.accent}55`}}
+              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';e.currentTarget.style.borderColor=isDone?`${meta.color}33`:C.border}}
+              style={{background:C.bgCard,border:`1px solid ${isDone?meta.color+'33':C.border}`,borderRadius:14,padding:'16px',textAlign:'left',cursor:'pointer',transition:'transform .17s,box-shadow .17s,border-color .17s',fontFamily:'inherit',position:'relative',overflow:'hidden'}}>
+              {/* Color preview strip */}
+              <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:isDone?meta.color:'transparent',borderRadius:'14px 14px 0 0',transition:'background .3s'}}/>
+              <div style={{display:'flex',gap:3,marginBottom:10}}>
+                {(m.examples||[]).slice(0,4).map((ex,i)=>(
+                  <div key={i} style={{width:14,height:14,borderRadius:3,background:`hsl(${ex.h},${ex.s}%,${ex.l}%)`}}/>
+                ))}
+              </div>
+              <div style={{fontSize:20,marginBottom:6}}>{m.icon}</div>
+              <div style={{fontSize:9,letterSpacing:2,color:meta.color,fontWeight:700,marginBottom:4}}>{m.tag}</div>
+              <div style={{fontSize:13,fontWeight:700,color:isDone?C.success:C.textPrimary,marginBottom:4}}>{m.title}</div>
+              <div style={{fontSize:11,color:C.textMuted,lineHeight:1.5,marginBottom:8,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>
+                {m.desc.split('.')[0]}.
+              </div>
+              {isDone?(
+                <div style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:9,color:C.success,background:'rgba(61,255,160,.1)',borderRadius:6,padding:'2px 8px',letterSpacing:1}}>
+                  <span>✓</span> MASTERED
+                </div>
+              ):(
+                <div style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:9,color:C.textMuted,background:C.bgSecondary,borderRadius:6,padding:'2px 8px',letterSpacing:1}}>
+                  3 PHASES
+                </div>
+              )}
+            </button>;
+          })}
+        </div>
+      </div>;
+    })}
+
+    <div style={{marginTop:4}}>
+      <div style={{color:C.textMuted,fontSize:9,letterSpacing:2,marginBottom:10}}>LAST 3 RATINGS</div>
+      <RatingHistoryStrip limit={3}/>
+    </div>
+  </div>;
+}
+
+// ── LEARN MODULE VIEW ──
+function LearnModuleView({mod,onBack,completed,onComplete,C,cfg}){
+  const[phase,setPhase]=useState('learn');
+  const[practiceState,setPracticeState]=useState('playing');
+  const[color,setColor]=useState({h:0,s:75,l:50});
+  const[feedback,setFeedback]=useState('');
+  const[lastScore,setLastScore]=useState(null);
+  const[quizDone,setQuizDone]=useState(false);
+  const wheelContainerRef=useRef(null);
+  const isDone=completed.has(mod.key);
+
+  const ratio=contrastRatio(hslToRgb(color.h,color.s,color.l),{r:255,g:255,b:255});
+  const wl=wcagLevel(ratio);
+
+  const checkPractice=()=>{
+    if(!mod.check(color)){setFeedback(mod.hint);return}
+    setPracticeState('done');setFeedback(mod.success);
+    const score=90+Math.round(Math.random()*10);setLastScore(score);
+    RatingStore.add(score,'Learn');
+    if(cfg.soundEnabled)AudioEngine.levelUp();
+    onComplete(mod.key,score);
+  };
+
+  const phases=[{id:'learn',label:'Learn',num:1},{id:'practice',label:'Practice',num:2},{id:'quiz',label:'Quiz',num:3}];
+
+  return<div style={{animation:'fadeIn .25s ease'}}>
+    {/* Back + phase nav header */}
+    <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18,flexWrap:'wrap'}}>
+      <button onClick={onBack} style={{background:'transparent',border:`1px solid ${C.border}`,borderRadius:8,padding:'6px 12px',color:C.textSecondary,fontSize:11,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:5,transition:'color .15s,border-color .15s'}}
+        onMouseEnter={e=>{e.currentTarget.style.color=C.textPrimary;e.currentTarget.style.borderColor=C.borderLight}}
+        onMouseLeave={e=>{e.currentTarget.style.color=C.textSecondary;e.currentTarget.style.borderColor=C.border}}>
+        ← Back
+      </button>
+      <div style={{flex:1,display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+        <span style={{fontSize:18}}>{mod.icon}</span>
+        <span style={{fontWeight:800,fontSize:15,color:C.textPrimary,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{mod.title}</span>
+        {isDone&&<span style={{fontSize:9,color:C.success,background:'rgba(61,255,160,.12)',border:'1px solid rgba(61,255,160,.3)',borderRadius:6,padding:'2px 7px',letterSpacing:1,flexShrink:0}}>✓ MASTERED</span>}
+      </div>
+      {/* Phase tabs */}
+      <div style={{display:'flex',gap:2,background:C.bgSecondary,borderRadius:10,padding:3}}>
+        {phases.map(p=>(
+          <button key={p.id} onClick={()=>setPhase(p.id)}
+            style={{background:phase===p.id?C.bgCard:'transparent',border:phase===p.id?`1px solid ${C.border}`:'1px solid transparent',borderRadius:8,padding:'5px 12px',color:phase===p.id?C.textPrimary:C.textMuted,fontSize:11,cursor:'pointer',fontFamily:'inherit',fontWeight:phase===p.id?700:400,transition:'all .15s',display:'flex',alignItems:'center',gap:5}}>
+            <span style={{width:16,height:16,borderRadius:4,background:phase===p.id?`linear-gradient(135deg,${C.accent},${C.accentAlt})`:'transparent',border:phase===p.id?'none':`1px solid ${C.border}`,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:8,color:phase===p.id?'#fff':C.textMuted,fontWeight:700,flexShrink:0}}>{p.num}</span>
+            <span className="tab-label">{p.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {/* ── PHASE 1: LEARN ── */}
+    {phase==='learn'&&<div key="learn" style={{animation:'fadeIn .25s ease',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:20,alignItems:'start'}}>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        {/* Diagram card */}
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:16,padding:'18px 16px'}}>
+          <div style={{fontSize:9,letterSpacing:2,color:C.textMuted,marginBottom:12}}>VISUAL CONCEPT</div>
+          <LearnDiagram moduleKey={mod.key} C={C} size={180}/>
+        </div>
+        {/* Color examples */}
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:16,padding:16}}>
+          <div style={{fontSize:9,letterSpacing:2,color:C.textMuted,marginBottom:10}}>COLOR EXAMPLES</div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {(mod.examples||[]).map((ex,i)=>{
+              const tC=ex.l>55?'#111':'#fff';
+              return<div key={i} style={{flex:'1 0 auto',minWidth:52,height:52,borderRadius:10,background:`hsl(${ex.h},${ex.s}%,${ex.l}%)`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:1}}>
+                <span style={{color:tC,fontSize:7,fontFamily:'JetBrains Mono',opacity:.85,letterSpacing:.5}}>{ex.label}</span>
+              </div>;
+            })}
+          </div>
+        </div>
+        {/* Keywords */}
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {(mod.keywords||[]).map(k=>(
+            <span key={k} style={{background:`${C.accent}18`,border:`1px solid ${C.accent}33`,borderRadius:20,padding:'3px 10px',fontSize:10,color:C.accent,fontWeight:600,letterSpacing:.5}}>{k}</span>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        {/* Core explanation */}
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:16,padding:18}}>
+          <div style={{fontSize:9,letterSpacing:2,color:C.accent,fontWeight:700,marginBottom:8}}>CONCEPT</div>
+          <p style={{color:C.textPrimary,fontSize:14,fontWeight:600,lineHeight:1.65,marginBottom:12}}>{mod.desc}</p>
+          <p style={{color:C.textSecondary,fontSize:12,lineHeight:1.8}}>{mod.deeper}</p>
+        </div>
+        {/* Fun fact */}
+        <div style={{background:`${C.accent}0e`,border:`1px solid ${C.accent}28`,borderRadius:14,padding:16,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:-8,right:-8,fontSize:36,opacity:.12}}>💡</div>
+          <div style={{fontSize:9,letterSpacing:2,color:C.accent,fontWeight:700,marginBottom:6}}>DID YOU KNOW?</div>
+          <p style={{color:C.textSecondary,fontSize:12,lineHeight:1.75,margin:0}}>{mod.funFact}</p>
+        </div>
+        {/* Next phase CTA */}
+        <button onClick={()=>setPhase('practice')}
+          style={{background:`linear-gradient(135deg,${C.accent},${C.accentAlt})`,border:'none',borderRadius:12,padding:'13px 20px',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'inherit',letterSpacing:'.07em',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:`0 4px 20px ${C.accentGlow}`}}>
+          Try the Challenge →
+        </button>
+      </div>
+    </div>}
+
+    {/* ── PHASE 2: PRACTICE ── */}
+    {phase==='practice'&&<div key="practice" style={{animation:'fadeIn .25s ease',display:'flex',gap:22,alignItems:'flex-start',flexWrap:'wrap'}}>
+      {/* Wheel + tooltip */}
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,width:'min(100%,320px)',flexShrink:0}}>
+        <div ref={wheelContainerRef} style={{position:'relative',display:'inline-block'}}>
+          <ColorWheel color={color} onChange={setColor} locked={practiceState==='done'} size={Math.min(300,cfg.wheelSize)}/>
+          <WheelHoverTooltip containerRef={wheelContainerRef} C={C}/>
+        </div>
+        {/* Live color swatch */}
+        <div style={{width:'100%',maxWidth:300,height:52,borderRadius:10,background:`hsl(${color.h},${color.s}%,${color.l}%)`,transition:'background .06s',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 4px 16px hsl(${color.h},${color.s}%,${color.l}%)44`}}>
+          <span style={{color:color.l>55?'#111':'#fff',fontFamily:'JetBrains Mono',fontSize:11,letterSpacing:.5}}>H:{Math.round(color.h)}° S:{Math.round(color.s)}% L:{Math.round(color.l)}%</span>
+        </div>
+        {mod.key==='wcag'&&<div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:10,width:'100%',maxWidth:300,fontSize:11,fontFamily:'JetBrains Mono'}}>
+          <div style={{color:C.textMuted,marginBottom:4,fontSize:9,letterSpacing:2}}>CONTRAST VS WHITE</div>
+          <div style={{color:wl.color,fontWeight:700,fontSize:14}}>{ratio.toFixed(2)}:1 — {wl.level}</div>
+          <div style={{marginTop:8,height:4,background:C.border,borderRadius:2,overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${Math.min(100,(ratio/7)*100)}%`,background:wl.color,borderRadius:2,transition:'width .1s'}}/>
+          </div>
+        </div>}
+      </div>
+
+      <div style={{flex:1,minWidth:220,maxWidth:380,display:'flex',flexDirection:'column',gap:13}}>
+        {/* Challenge card */}
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.accent}`,borderRadius:14,padding:18}}>
+          <div style={{fontSize:9,letterSpacing:2,color:C.accent,fontWeight:700,marginBottom:6}}>CHALLENGE</div>
+          <p style={{color:C.textPrimary,fontSize:13,fontWeight:600,lineHeight:1.7,margin:0}}>{mod.challenge}</p>
+        </div>
+
+        {/* Feedback / hint area */}
+        {feedback&&<div style={{padding:'10px 14px',borderRadius:10,animation:'fadeIn .25s ease',
+          background:practiceState==='done'?'rgba(61,255,160,.1)':'rgba(255,204,68,.08)',
+          border:`1px solid ${practiceState==='done'?'rgba(61,255,160,.4)':'rgba(255,204,68,.3)'}`,
+          color:practiceState==='done'?C.success:C.warning,fontSize:12,lineHeight:1.6}}>
+          {practiceState==='done'?'✓ ':' 💡 '}{feedback}
+        </div>}
+
+        {practiceState==='playing'?(
+          <>
+            <button onClick={checkPractice}
+              style={{background:`linear-gradient(135deg,${C.accent},${C.accentAlt})`,border:'none',borderRadius:12,padding:'13px 20px',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'inherit',letterSpacing:'.07em',boxShadow:`0 4px 20px ${C.accentGlow}`}}>
+              CHECK ✓
+            </button>
+            <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+              <span style={{fontSize:10,color:C.textMuted}}>Tip: Hover the color ring to see color names</span>
+            </div>
+          </>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {lastScore&&<div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,padding:16,textAlign:'center'}}>
+              <StarRating score={lastScore} mode="Learn"/>
+            </div>}
+            <button onClick={()=>setPhase('quiz')}
+              style={{background:`linear-gradient(135deg,${C.accent},${C.accentAlt})`,border:'none',borderRadius:12,padding:'13px 20px',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'inherit',letterSpacing:'.07em',boxShadow:`0 4px 20px ${C.accentGlow}`}}>
+              Take the Quiz →
+            </button>
+            <button onClick={()=>{setColor({h:0,s:75,l:50});setPracticeState('playing');setFeedback('');}}
+              style={{background:'transparent',border:`1px solid ${C.border}`,borderRadius:10,padding:'9px 16px',color:C.textMuted,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>
+              ↺ Try Again
+            </button>
+          </div>
+        )}
+      </div>
+    </div>}
+
+    {/* ── PHASE 3: QUIZ ── */}
+    {phase==='quiz'&&<div key="quiz" style={{animation:'fadeIn .25s ease',maxWidth:540,margin:'0 auto'}}>
+      <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:16,padding:24}}>
+        <div style={{fontSize:9,letterSpacing:2,color:C.textMuted,marginBottom:4}}>KNOWLEDGE CHECK</div>
+        <div style={{fontSize:14,fontWeight:700,color:C.textPrimary,marginBottom:18}}>{mod.title} — 3 Questions</div>
+        <QuizPhase mod={mod} onDone={(pct)=>{setQuizDone(true);if(pct>=67)onComplete(mod.key,pct)}} C={C}/>
+      </div>
+    </div>}
+  </div>;
+}
+
+// ── LEARN MODE MAIN ──
 function LearnMode(){
   const{C}=useTheme();
   const{s:cfg}=useSettings();
   const[active,setActive]=useState(null);
-  const[color,setColor]=useState({h:0,s:75,l:50});
   const[completed,setCompleted]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem('chromix-learn')||'[]'))}catch{return new Set()}});
-  const[phase,setPhase]=useState('intro');
-  const[feedback,setFeedback]=useState('');
-  const[lastScore,setLastScore]=useState(null);
-  const saveCompleted=c=>{try{localStorage.setItem('chromix-learn',JSON.stringify([...c]))}catch{}};
 
-  const mod=active!==null?MODULES[active]:null;
-  const check=()=>{
-    if(!mod)return;
-    if(mod.check(color)){
-      const n=new Set([...completed,mod.key]);setCompleted(n);saveCompleted(n);setPhase('done');setFeedback(mod.success);
-      const score=90+Math.round(Math.random()*10);setLastScore(score);
-      RatingStore.add(score,'Learn');
-      if(cfg.soundEnabled)AudioEngine.levelUp();
-    }else setFeedback(mod.hint);
+  const saveCompleted=c=>{try{localStorage.setItem('chromix-learn',JSON.stringify([...c]))}catch{}};
+  const handleComplete=(key,score)=>{
+    const n=new Set([...completed,key]);setCompleted(n);saveCompleted(n);
   };
 
   if(active===null){
-    const byLevel=[1,2,3,4].map(l=>MODULES.filter(m=>m.level===l));
-    return<div style={{animation:'fadeIn .25s ease'}}>
-      <div style={{color:C.textMuted,fontSize:12,marginBottom:20}}>
-        {completed.size}/{MODULES.length} concepts mastered
-        <div style={{height:3,background:C.border,borderRadius:2,marginTop:6,maxWidth:200}}>
-          <div style={{height:'100%',width:`${(completed.size/MODULES.length)*100}%`,background:`linear-gradient(90deg,${C.accent},${C.accentAlt})`,borderRadius:2,transition:'width .4s'}}/>
-        </div>
-      </div>
-      {byLevel.map((mods,li)=>(
-        <div key={li} style={{marginBottom:24}}>
-          <div style={{color:C.textMuted,fontSize:10,letterSpacing:3,marginBottom:10}}>LEVEL {li+1}</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(185px,1fr))',gap:10}}>
-            {mods.map(m=>{
-              const idx=MODULES.findIndex(x=>x.key===m.key);
-              const done=completed.has(m.key);
-              return<button key={m.key} onClick={()=>{setActive(idx);setPhase('intro');setColor({h:0,s:75,l:50});setFeedback('');setLastScore(null)}}
-                onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}
-                style={{background:done?C.bgSecondary:C.bgCard,border:`1px solid ${done?C.success+'44':C.border}`,borderRadius:12,padding:16,textAlign:'left',cursor:'pointer',transition:'transform .15s',fontFamily:'inherit'}}>
-                <div style={{fontSize:22,marginBottom:6}}>{m.icon}</div>
-                <div style={{color:done?C.success:C.textPrimary,fontWeight:600,fontSize:13}}>{m.title}</div>
-                {done&&<div style={{color:C.success,fontSize:10,marginTop:4}}>✓ Mastered</div>}
-              </button>;
-            })}
-          </div>
-        </div>
-      ))}
-      <Card style={{marginTop:16}}>
-        <div style={{color:C.textMuted,fontSize:9,letterSpacing:2,marginBottom:10}}>LAST 3 RATINGS</div>
-        <RatingHistoryStrip limit={3}/>
-      </Card>
-    </div>;
+    return<LearnOverview modules={MODULES} completed={completed} onSelect={i=>{setActive(i)}} C={C}/>;
   }
 
-  const ratio=contrastRatio(hslToRgb(color.h,color.s,color.l),{r:255,g:255,b:255});
-  const wl=wcagLevel(ratio);
-  return<div style={{animation:'fadeIn .25s ease'}}>
-    <Btn onClick={()=>setActive(null)} variant="ghost" small>← Back</Btn>
-    <div style={{display:'flex',gap:24,alignItems:'flex-start',flexWrap:'wrap',marginTop:16}}>
-      <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'center',width:'min(100%,320px)',flexShrink:0}}>
-        <ColorWheel color={color} onChange={setColor} locked={phase==='done'} size={Math.min(300,cfg.wheelSize)}/>
-        <div style={{width:'100%',maxWidth:300,height:52,borderRadius:10,background:`hsl(${color.h},${color.s}%,${color.l}%)`,transition:'background .06s',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <span style={{color:color.l>55?'#111':'#fff',fontFamily:'monospace',fontSize:11}}>H:{Math.round(color.h)}° S:{Math.round(color.s)}% L:{Math.round(color.l)}%</span>
-        </div>
-        {mod.key==='wcag'&&<div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:10,width:'100%',maxWidth:300,fontSize:11,fontFamily:'monospace'}}>
-          <div style={{color:C.textMuted,marginBottom:4}}>Contrast vs white:</div>
-          <div style={{color:wl.color,fontWeight:700,fontSize:14}}>{ratio.toFixed(2)}:1 — {wl.level}</div>
-        </div>}
-      </div>
-      <div style={{flex:1,minWidth:220,maxWidth:360}}>
-        <div style={{fontSize:26,marginBottom:6}}>{mod.icon}</div>
-        <h2 style={{color:C.textPrimary,marginBottom:10,fontSize:18}}>{mod.title}</h2>
-        <p style={{color:C.textSecondary,fontSize:13,lineHeight:1.75,marginBottom:18}}>{mod.desc}</p>
-        {phase!=='done'?(
-          <>
-            <Card style={{marginBottom:14}}>
-              <div style={{color:C.accent,fontSize:10,letterSpacing:2,marginBottom:6}}>CHALLENGE</div>
-              <p style={{color:C.textSecondary,fontSize:13,margin:0,lineHeight:1.6}}>{mod.challenge}</p>
-            </Card>
-            {feedback&&<div style={{background:C.bgSecondary,border:`1px solid ${C.warning}44`,borderRadius:8,padding:10,marginBottom:12}}>
-              <p style={{color:C.warning,fontSize:12,margin:0}}>💡 {feedback}</p>
-            </div>}
-            <Btn onClick={check}>CHECK ✓</Btn>
-          </>
-        ):(
-          <div>
-            <div style={{background:C.bgSecondary,border:`1px solid ${C.success}44`,borderRadius:10,padding:14,marginBottom:16}}>
-              <div style={{color:C.success,fontSize:10,letterSpacing:2,marginBottom:8}}>✓ MASTERED</div>
-              <p style={{color:C.success,fontSize:13,margin:0,lineHeight:1.6,marginBottom:12}}>{feedback}</p>
-              {lastScore&&<StarRating score={lastScore} mode="Learn"/>}
-            </div>
-            <Btn onClick={()=>setActive(null)} variant="secondary">← Back to Modules</Btn>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>;
+  const mod=MODULES[active];
+  return<LearnModuleView
+    mod={mod} onBack={()=>setActive(null)}
+    completed={completed} onComplete={handleComplete}
+    C={C} cfg={cfg}
+  />;
 }
 
 // ═══════════════════════════════════════════════════════════════════
