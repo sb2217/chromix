@@ -1,118 +1,384 @@
- Chromix
-A perceptually accurate, interactive color theory learning and training platform — built as a single HTML file.
-Chromix combines a precision color matching game, guided harmony training, an interactive learn section, a color explorer, and brand psychology reference — all powered by CIE ΔE₂₀₀₀ color science and WCAG 2.1 accessibility standards.
+Chromix
 
-Live: chromix-rust.vercel.app
+Chromix is a perceptually accurate, interactive color theory learning and training platform built entirely as a single HTML file.
 
+It combines a precision color-matching game, structured harmony training, an interactive learning system, a color explorer, and brand psychology reference — all powered by CIE ΔE₂₀₀₀ color science and WCAG 2.1 accessibility standards.
+
+🌐 Live Demo: https://chromix-rust.vercel.app/
 
 Features
 🎯 Classic Mode
-Match a randomized target color using the HSL color wheel. Scored in real-time using CIE ΔE₂₀₀₀ — the industry-standard perceptual color difference formula. Four difficulty levels (Novice → Master) control how far into edge-case hues, saturations, and lightnesses targets can fall.
+
+Match a randomized target color using the HSL color wheel.
+
+Scoring is calculated using CIE ΔE₂₀₀₀, the industry-standard perceptual color difference formula.
+
+Four difficulty levels control how extreme target colors can be:
+
+Difficulty	Description
+Novice	Basic hues and balanced saturation
+Intermediate	Wider saturation/lightness ranges
+Expert	Includes edge cases
+Master	Full spectrum precision challenges
 ⏱ Sprint Mode
-A timed blitz of rapid color matches. Race through as many targets as possible before the clock runs out, with live scoring and a streak multiplier.
+
+A timed color-matching challenge.
+
+Match as many colors as possible before time runs out
+
+Real-time scoring
+
+Streak multiplier system
+
 🏆 Harmony Levels
-A structured progression through six color harmony types — Complementary, Analogous, Triadic, Tetradic, Hue Match, and Saturation. Each level has three tasks of increasing difficulty. Score ≥ 80% to unlock the next level. Progress is saved to localStorage.
-LevelHarmonyGoal1ComplementaryPlace a marker 180° from the base hue2AnalogousFind neighbors within ±30°3TriadicComplete the 120° triangle4TetradicPlace all three 90° partners5Hue MatchPrecisely match a target hue6SaturationControl vividness with slider precision
+
+A structured training path for mastering color harmony principles.
+
+Progression unlocks when ≥ 80% score is achieved.
+
+Progress is automatically saved to localStorage.
+
+Level	Harmony Type	Goal
+1	Complementary	Place marker 180° from base hue
+2	Analogous	Identify neighbors within ±30°
+3	Triadic	Complete the 120° triangle
+4	Tetradic	Place all three 90° partners
+5	Hue Match	Precisely match target hue
+6	Saturation	Control vividness with slider precision
 📚 Learn Mode
-Eight interactive color theory modules across four levels, each with three phases:
 
-Learn — Visual SVG concept diagram, written explanation, a "Did You Know?" fact, color examples, and keyword tags
-Practice — Interactive color wheel challenge with a live hover tooltip showing the color name and degree at the cursor
-Quiz — Three multiple-choice questions with animated answer feedback and a scored result
+Eight interactive color theory modules organized into four levels.
 
-LevelModuleFoundationAchromatic Colors, Understanding HuePropertiesSaturation, Lightness, Warm vs CoolHarmonyComplementary, Triadic ColorsAdvancedAccessibility Contrast (WCAG)
+Each module has three phases:
+
+Learn
+
+Visual SVG concept diagrams
+
+Written explanations
+
+“Did You Know?” facts
+
+Color examples
+
+Keyword tags
+
+Practice
+
+Interactive color wheel challenge with live hover tooltip showing:
+
+Color name
+
+Hue degree
+
+Quiz
+
+Three multiple choice questions
+
+Animated answer feedback
+
+Final score
+
+Level	Modules
+Foundation	Achromatic Colors, Understanding Hue
+Properties	Saturation, Lightness, Warm vs Cool
+Harmony	Complementary, Triadic Colors
+Advanced	Accessibility Contrast (WCAG)
 🌈 Explore Mode
-An open sandbox. Pick any color from the wheel and inspect its psychology, harmony schemes (Monochromatic, Analogous, Complementary, Split-Comp, Triadic, Tetradic), WCAG contrast ratios, and a full color history timeline with replay and export.
+
+An open color sandbox.
+
+Features:
+
+Inspect any color from the wheel
+
+Generate harmony schemes:
+
+Monochromatic
+
+Analogous
+
+Complementary
+
+Split Complementary
+
+Triadic
+
+Tetradic
+
+WCAG contrast ratio analysis
+
+Color history timeline with replay + export
+
 🏢 Brands Mode
-A reference library of real-world brand color psychology. For each brand: the exact hex value, emotional associations, cultural meanings by region, and how the color functions in UI/UX context.
+
+A reference library of brand color psychology.
+
+Each brand includes:
+
+Exact HEX color
+
+Emotional associations
+
+Cultural meanings by region
+
+UI/UX usage analysis
+
 ❓ Guide
-An in-app reference covering controls, keyboard shortcuts, scoring, and how the color science works.
+
+In-app reference documentation covering:
+
+Controls
+
+Keyboard shortcuts
+
+Scoring system
+
+Color science explanation
 
 Color Science
-Chromix uses several layers of color math rather than simple HSL distance:
-CIE ΔE₂₀₀₀ — All game scores are computed using the full CIEDE2000 formula (not ΔE76 or ΔE94). This accounts for perceptual non-uniformities in lightness, chroma, and hue, and includes the RT rotation term for blue hues. A score of 100 means ΔE < 1 — imperceptible to the human eye.
-CIE Lab — Colors are converted through linearized sRGB → XYZ D65 → L*a*b* for all perceptual calculations.
-WCAG 2.1 Contrast — Relative luminance is computed using the IEC 61966-2-1 sRGB transfer function. Contrast ratios are classified as Fail / AA Large / AA / AAA.
+
+Chromix uses real perceptual color mathematics instead of simple HSL distance.
+
+CIE ΔE₂₀₀₀
+
+All scores are computed using the CIEDE2000 formula, which accounts for:
+
+Lightness differences
+
+Chroma variations
+
+Hue shifts
+
+Blue hue rotation term (RT)
+
+Score meaning
+
+Score	Interpretation
+100	ΔE < 1 (imperceptible difference)
+90–99	Nearly identical
+70–89	Close match
+<70	Noticeable difference
+
 Score formula:
-score = 100 × (1 - ΔE / cap)^1.6    where cap ∈ {15, 18, 25, 35}
-Cap is chosen by the active scoring strictness setting (WCAG → Relaxed).
 
+score = 100 × (1 - ΔE / cap)^1.6
+
+Where
+
+cap ∈ {15, 18, 25, 35}
+
+based on scoring strictness.
+
+CIE Lab Color Space
+
+Color conversion pipeline:
+
+sRGB → Linear RGB → XYZ (D65) → CIE L*a*b*
+
+Used for all perceptual calculations.
+
+WCAG 2.1 Contrast
+
+Relative luminance is calculated using the IEC 61966-2-1 sRGB transfer function.
+
+Contrast ratings:
+
+Ratio	Classification
+< 3:1	Fail
+≥ 3:1	AA Large
+≥ 4.5:1	AA
+≥ 7:1	AAA
 Architecture
-Chromix is intentionally a zero-build, single-file application. There is no bundler, no Node.js, no build step. Everything ships in one .html file.
+
+Chromix is designed as a zero-build application.
+
+There is:
+
+No bundler
+
+No Node.js
+
+No build pipeline
+
+Everything runs inside one HTML file.
+
 chromix.html
-├── <style>          CSS custom properties (3 themes), keyframes, reset
-├── <canvas>         Ambient background — cursor-reactive gradient orbs
-├── <script>         Background animation (vanilla JS)
+├── <style>          CSS variables, themes, animations
+├── <canvas>         Animated background gradient
+├── <script>         Canvas animation logic
 └── <script type="text/babel">
-    ├── Color math    hslToRgb, hsvToHsl, rgbToLab, deltaE2000, contrastRatio
-    ├── Components    ColorWheel, HueRingWheel, Btn, Card, Badge, StarRating
-    ├── Modes         GameMode, SprintMode, LevelMode, LearnMode, ExploreMode
-    ├── Reference     BrandPsychologyTab, HelpGuideTab
-    ├── State         ThemeProvider, SettingsProvider (localStorage)
-    └── AppShell      Header, tab nav, settings panel
-Runtime dependencies (CDN, no install):
+    ├── Color Math
+    │   hslToRgb
+    │   rgbToLab
+    │   deltaE2000
+    │   contrastRatio
+    │
+    ├── UI Components
+    │   ColorWheel
+    │   HueRingWheel
+    │   Card
+    │   Badge
+    │
+    ├── Game Modes
+    │   ClassicMode
+    │   SprintMode
+    │   HarmonyMode
+    │   LearnMode
+    │   ExploreMode
+    │
+    ├── Reference
+    │   BrandPsychologyTab
+    │   HelpGuideTab
+    │
+    ├── State
+    │   ThemeProvider
+    │   SettingsProvider
+    │
+    └── AppShell
+        Header
+        Navigation
+        Settings Panel
+Runtime Dependencies
 
-React 18.2 + ReactDOM (UMD)
-Babel Standalone 7.23 (in-browser JSX transform)
-Google Fonts: Syne, JetBrains Mono
+Loaded via CDN (no installation required):
 
-Persistent state (all via localStorage):
+React 18.2
 
-chromix-theme — active theme
-chromix-settings — wheel size, ring thickness, sensitivity, scoring strictness, sound
-chromix-harmony — per-level best scores and attempt counts
-chromix-learn — set of mastered module keys
-chromix-ratings — last 20 scored attempts across all modes
+ReactDOM
 
+Babel Standalone
 
+Google Fonts
+
+Syne
+
+JetBrains Mono
+
+Persistent State
+
+Stored locally using localStorage.
+
+Key	Purpose
+chromix-theme	active theme
+chromix-settings	UI + gameplay settings
+chromix-harmony	level progress
+chromix-learn	completed modules
+chromix-ratings	recent scores
 Themes
-ThemeBackgroundAccentUse case🌈 DefaultDeep space #07080fPurple #7c6fffPrimary experience🌙 DarkPure black #000000Purple #7c6fffHigh contrast OLED☀ LightWhite #ffffffIndigo #4455eeBright environments
-Cycle themes with the theme button in the header (keyboard: click only).
-
+Theme	Background	Accent	Use Case
+Default	#07080f	#7c6fff	Primary experience
+Dark	#000000	#7c6fff	OLED displays
+Light	#ffffff	#4455ee	Bright environments
 Keyboard Shortcuts
-KeyAction← →Nudge hue left / right↑ ↓Adjust lightnessShift + ↑ ↓Adjust saturationEnterSubmit current attemptNNext target (after result)RRestart current roundTabToggle expert analysis panel1–4Switch difficulty (Classic mode)EscClose settings panel
-
+Key	Action
+← →	Adjust hue
+↑ ↓	Adjust lightness
+Shift + ↑ ↓	Adjust saturation
+Enter	Submit attempt
+N	Next target
+R	Restart round
+Tab	Toggle analysis panel
+1–4	Switch difficulty
+Esc	Close settings
 Settings
-Open via the ⚙ icon in the header.
-SettingDefaultRangeWheel Size300px200–380pxRing Thickness0.1150.06–0.22Triangle Size0.3150.20–0.42Drag Sensitivity1.00.3–2.5Scoring StrictnessStandardRelaxed / Standard / Strict / WCAGPrecision ModeOffShows live HSL + Lab + ΔE readoutSound FeedbackOffWeb Audio API tones on submit
 
+Accessible via ⚙ icon in header.
+
+Setting	Default	Range
+Wheel Size	300px	200–380
+Ring Thickness	0.115	0.06–0.22
+Triangle Size	0.315	0.20–0.42
+Drag Sensitivity	1.0	0.3–2.5
+Scoring Strictness	Standard	Relaxed / Standard / Strict / WCAG
+Precision Mode	Off	Shows HSL + Lab + ΔE
+Sound Feedback	Off	Web Audio feedback
 Usage
-No install. Just open the file:
-bashgit clone https://github.com/suyashbajpai/chromix.git
+
+No installation required.
+
+Clone the repo:
+
+git clone https://github.com/suyashbajpai/chromix.git
 cd chromix
-open chromix.html        # macOS
-# or just double-click the file in any OS
-Or host it anywhere static — Netlify, GitHub Pages, Vercel, or a plain web server. Because it is a single self-contained file, there is no build step and no server-side logic required.
+
+Open the file:
+
+chromix.html
+
+Or simply double-click the file.
+
+Hosting
+
+Chromix can be deployed on any static host:
+
+GitHub Pages
+
+Netlify
+
+Vercel
+
+Cloudflare Pages
+
+Any static web server
+
+Because it is a single self-contained HTML file, no backend or build step is required.
 
 Export
-From Explore mode or the Sandbox, palettes can be exported as:
+
+Palettes can be exported from Explore Mode.
+
 JSON
-json{
+{
   "exported": "2025-01-01T00:00:00.000Z",
   "count": 3,
   "colors": [
-    { "index": 1, "hsl": { "h": 210, "s": 72, "l": 52 }, "hex": "#2E88CC", "rgb": { "r": 46, "g": 136, "b": 204 } }
+    {
+      "index": 1,
+      "hsl": { "h": 210, "s": 72, "l": 52 },
+      "hex": "#2E88CC",
+      "rgb": { "r": 46, "g": 136, "b": 204 }
+    }
   ]
 }
-CSS Custom Properties
-css:root {
+CSS Variables
+:root {
   --color-1: #2E88CC;
   --color-2: #CC5E2E;
   --color-3: #2ECC88;
 }
-
 Browser Support
-Requires a modern browser with support for:
+
+Requires modern browsers supporting:
 
 Canvas 2D API
-CSS Custom Properties
-Web Audio API (optional — for sound feedback)
-localStorage
-ES2020+ (arrow functions, optional chaining, ??)
 
-Tested in Chrome 120+, Firefox 121+, Safari 17+, Edge 120+.
+CSS Custom Properties
+
+localStorage
+
+Web Audio API
+
+ES2020+
+
+Tested on:
+
+Chrome 120+
+
+Firefox 121+
+
+Safari 17+
+
+Edge 120+
 
 License
-MIT — do whatever you want with it.
 
-Built by Suyash Bajpai
+MIT License.
+
+Use it freely for learning, experimentation, or commercial projects.
+
+Author
+
+Suyash Bajpai
+
+Chromix was built as an experiment in combining interactive learning, perceptual color science, and zero-build web architecture into a single portable application.
