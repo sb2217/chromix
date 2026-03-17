@@ -2011,6 +2011,7 @@ const MODULES=[
    funFact:'The word "achromatic" comes from Greek — "a" (without) + "chroma" (color). Ancient Greek and Japanese ink-wash art (sumi-e) used only black and grey to create masterpieces.',
    keywords:['Neutral','No Hue','Grayscale'],
    examples:[{h:0,s:0,l:20,label:'Black'},{h:0,s:0,l:50,label:'Grey'},{h:0,s:0,l:85,label:'Near White'},{h:0,s:0,l:100,label:'White'}],
+   accuracyHSL:[0,0,50],
    challenge:'Remove all color: drag the triangle handle to zero saturation.',
    check:c=>c.s<10,
    success:'Perfect! Zero saturation makes hue irrelevant — pure neutral tone.',
@@ -2027,6 +2028,7 @@ const MODULES=[
    funFact:'The human eye can distinguish roughly 10 million colors, but most languages name only 11 basic hue categories. Languages without a word for blue (like ancient Greek) may not perceive it as a distinct category!',
    keywords:['Angle','Spectrum','Primary'],
    examples:[{h:0,s:90,l:50,label:'Red 0°'},{h:60,s:90,l:50,label:'Yellow 60°'},{h:120,s:90,l:50,label:'Green 120°'},{h:240,s:90,l:50,label:'Blue 240°'}],
+   accuracyHSL:[120,90,50],
    challenge:'Drag the outer ring to approximately 120° (green).',
    check:c=>Math.abs(c.h-120)<18&&c.s>50,
    success:'Correct! 120° is the green primary — the triadic partner of red and blue.',
@@ -2043,6 +2045,7 @@ const MODULES=[
    funFact:'Commercial printers use "chroma" (similar to saturation) to calibrate color output. Newspapers traditionally used lower saturation to prevent ink bleeding — that is why old newspapers look so muted.',
    keywords:['Purity','Vivid','Muted'],
    examples:[{h:200,s:100,l:50,label:'100% Pure'},{h:200,s:60,l:50,label:'60% Muted'},{h:200,s:20,l:50,label:'20% Pastel'},{h:200,s:0,l:50,label:'0% Grey'}],
+   accuracyHSL:[200,100,50],
    challenge:'Max out saturation above 90%.',
    check:c=>c.s>90,
    success:'Vivid and pure! High saturation = maximum chromatic intensity.',
@@ -2059,6 +2062,7 @@ const MODULES=[
    funFact:'Artists have used lightness as a compositional tool for centuries. Rembrandt\'s technique of painting deep blacks with small bright highlights (chiaroscuro) is still taught today.',
    keywords:['Tint','Shade','Brightness'],
    examples:[{h:270,s:80,l:15,label:'Shade'},{h:270,s:80,l:35,label:'Dark'},{h:270,s:80,l:50,label:'Pure'},{h:270,s:80,l:80,label:'Tint'}],
+   accuracyHSL:[270,80,80],
    challenge:'Create a pastel: lightness above 72%.',
    check:c=>c.l>72,
    success:'Beautiful pastel! High lightness softens colors.',
@@ -2075,6 +2079,7 @@ const MODULES=[
    funFact:'Impressionist painters like Monet deliberately placed complementary colors next to each other to make them appear more vibrant. Look for orange and blue, or red and green, in his water lily paintings.',
    keywords:['180° Apart','Contrast','Tension'],
    examples:[{h:0,s:85,l:52,label:'Red'},{h:180,s:85,l:52,label:'Cyan (comp)'},{h:270,s:75,l:52,label:'Purple'},{h:90,s:75,l:52,label:'Lime (comp)'}],
+   accuracyHSL:[210,85,52],
    challenge:'Current base is orange (30°). Find its complement near 210°.',
    check:c=>Math.abs(c.h-210)<22&&c.s>50,
    success:'Yes! 30° and 210° are complementary.',
@@ -2091,6 +2096,7 @@ const MODULES=[
    funFact:'The RGB model (Red, Green, Blue) used in all digital screens is a triadic color system. Your monitor mixes these three primaries at 0°, 120°, 240° to produce every color you see.',
    keywords:['120° Apart','Three Colors','Vibrant'],
    examples:[{h:0,s:85,l:52,label:'Red 0°'},{h:120,s:85,l:52,label:'Green 120°'},{h:240,s:85,l:52,label:'Blue 240°'}],
+   accuracyHSL:[240,85,52],
    challenge:'Find the third triadic partner of red (0°) and green (120°) — blue at 240°.',
    check:c=>Math.abs(c.h-240)<20&&c.s>55,
    success:'Blue! 0°+120°+240° = RGB triad.',
@@ -2107,6 +2113,7 @@ const MODULES=[
    funFact:'Studies show warm-colored restaurants see faster customer turnover — diners eat quicker in red interiors. Cool-colored rooms make people perceive time more slowly.',
    keywords:['Temperature','Mood','Perception'],
    examples:[{h:10,s:90,l:52,label:'Warm Red'},{h:40,s:90,l:52,label:'Warm Orange'},{h:200,s:80,l:52,label:'Cool Cyan'},{h:250,s:80,l:52,label:'Cool Blue'}],
+   accuracyHSL:[250,80,52],
    challenge:'Create a deeply cool blue-violet between 230°–270°.',
    check:c=>c.h>=225&&c.h<=275&&c.s>55,
    success:'Cool and professional! This range conveys trust and calm.',
@@ -2123,6 +2130,7 @@ const MODULES=[
    funFact:'The contrast ratio formula was developed based on how the human eye perceives luminance differences. It is not linear — our eyes are more sensitive to the green spectrum, which is why green is weighted most heavily in the calculation.',
    keywords:['WCAG','Contrast','Accessibility'],
    examples:[{h:240,s:70,l:25,label:'AA ✓'},{h:0,s:70,l:28,label:'AA ✓'},{h:120,s:60,l:28,label:'AA ✓'},{h:60,s:80,l:55,label:'Fail ✗'}],
+   accuracyHSL:[240,70,28],
    challenge:'Pick a color achieving at least 4.5:1 contrast ratio against white.',
    check:c=>{const r=contrastRatio(hslToRgb(c.h,c.s,c.l),{r:255,g:255,b:255});return r>=4.5},
    success:'This color passes WCAG AA — accessible as foreground text on white.',
@@ -2590,9 +2598,10 @@ function LearnModuleView({mod,onBack,completed,onComplete,C,cfg}){
           <div style={{fontSize:9,letterSpacing:2,color:C.textMuted,marginBottom:10}}>COLOR EXAMPLES</div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
             {(mod.examples||[]).map((ex,i)=>{
-              const tC=ex.l>55?'#111':'#fff';
+              const compH=(ex.h+180)%360;
+              const tC=`hsl(${compH},85%,${ex.l>50?15:90}%)`;
               return<div key={i} style={{flex:'1 0 auto',minWidth:52,height:52,borderRadius:10,background:`hsl(${ex.h},${ex.s}%,${ex.l}%)`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:1}}>
-                <span style={{color:tC,fontSize:7,fontFamily:'JetBrains Mono',opacity:.85,letterSpacing:.5}}>{ex.label}</span>
+                <span style={{color:tC,fontSize:7,fontFamily:'JetBrains Mono',fontWeight:700,letterSpacing:.5,textShadow:`0 0 6px hsl(${compH},85%,${ex.l>50?15:90}%)44`}}>{ex.label}</span>
               </div>;
             })}
           </div>
@@ -2652,6 +2661,27 @@ function LearnModuleView({mod,onBack,completed,onComplete,C,cfg}){
           <div style={{fontSize:9,letterSpacing:2,color:C.accent,fontWeight:700,marginBottom:6}}>CHALLENGE</div>
           <p style={{color:C.textPrimary,fontSize:13,fontWeight:600,lineHeight:1.7,margin:0}}>{mod.challenge}</p>
         </div>
+
+        {/* Live Accuracy Meter */}
+        {mod.accuracyHSL&&(()=>{
+          const [th,ts,tl]=mod.accuracyHSL;
+          const targetLab=rgbToLab(hslToRgb(th,ts,tl));
+          const currentLab=rgbToLab(hslToRgb(color.h,color.s,color.l));
+          const dE=deltaE2000(targetLab,currentLab);
+          const maxDE=62.5;
+          const accuracy=Math.max(0,Math.min(100,Math.round(100-((dE/maxDE)*100))));
+          const aColor=accuracy>=70?'#3dffa0':accuracy>=40?'#ffcc44':'#ff5533';
+          return<div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,padding:'12px 16px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <span style={{fontSize:9,letterSpacing:'0.15em',color:C.textMuted,fontWeight:700}}>ACCURACY</span>
+              <span style={{color:aColor,fontFamily:'JetBrains Mono',fontSize:12,fontWeight:700,transition:'color .2s'}}>{accuracy}%</span>
+            </div>
+            <div style={{height:5,background:C.bgSecondary,borderRadius:3,overflow:'hidden',marginBottom:6}}>
+              <div style={{height:'100%',width:`${accuracy}%`,background:`linear-gradient(90deg,#ff5533 0%,#ffcc44 50%,#3dffa0 100%)`,backgroundSize:'200% 100%',backgroundPosition:`${Math.round((1-accuracy/100)*100)}% 0`,borderRadius:3,transition:'width .12s ease'}}/>
+            </div>
+            <div style={{textAlign:'right',fontSize:9,fontFamily:'JetBrains Mono',color:C.textMuted}}>ΔE live: {dE.toFixed(2)}</div>
+          </div>;
+        })()}
 
         {/* Feedback / hint area */}
         {feedback&&<div style={{padding:'10px 14px',borderRadius:10,animation:'fadeIn .25s ease',
